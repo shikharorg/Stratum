@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stratum-libs"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "pydantic-settings",
+    "structlog",
+    "fastapi",
+    "redis",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["stratum_libs"]
