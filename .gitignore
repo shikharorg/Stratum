@@ -1,0 +1,121 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+wheels/
+sdist/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env.bak
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# uv
+.uv/
+
+# mypy
+.mypy_cache/
+*.pyi.bak
+
+# pytest
+.pytest_cache/
+pytestdebug.log
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+htmlcov/
+
+# Editor — VS Code
+.vscode/
+*.code-workspace
+
+# Editor — JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Editor — Vim/Neovim
+*.swp
+*.swo
+*~
+Session.vim
+
+# OS — macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# OS — Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# OS — Linux
+.fuse_hidden*
+.nfs*
+
+# Docker
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Kubernetes secrets
+*-secret.yaml
+*-secret.yml
+secrets/
+k8s/secrets/
+
+# Logs
+*.log
+logs/
+
+# Ruff
+.ruff_cache/
+
+# Development
+Development.md
+
+# Python tooling
+.pytype/
+.pyre/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Docker
+*.pid
+
+# Qdrant local storage
+qdrant_storage/
+
+# Redis dumps
+dump.rdb
+
+# PostgreSQL local data
+postgres_data/
+
+# pgAdmin
+pgadmin_data/
