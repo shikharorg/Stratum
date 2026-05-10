@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stratum-gateway"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "httpx",
+    "python-jose[cryptography]",
+    "pydantic-settings",
+    "redis",
+    "structlog",
+    "stratum-libs",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
