@@ -2,13 +2,13 @@ from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
+    tenant_slug: str
     email: str
     password: str
 
 
 class LoginResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
 
