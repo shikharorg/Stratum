@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.db import engine
 from app.routers.auth import router as auth_router
+from app.routers.tenants import router as tenants_router
+from app.routers.users import router as users_router
 
 structlog.configure(
     processors=[
@@ -43,6 +45,8 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(tenants_router, prefix="/api/v1")
 
 
 @app.get("/health")
