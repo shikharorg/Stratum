@@ -34,7 +34,7 @@ logger: structlog.BoundLogger = structlog.get_logger(service_name=settings.SERVI
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("gateway.startup", environment=settings.ENVIRONMENT)
 
-    app.state.http_client = httpx.AsyncClient()
+    app.state.http_client = httpx.AsyncClient(timeout=120.0)
     redis_client = aioredis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
     app.state.redis = redis_client
     init_redis(redis_client)
