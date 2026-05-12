@@ -120,11 +120,5 @@ postgres_data/
 # pgAdmin
 pgadmin_data/
 
-# Test files
-register.json
-login.json
-old_token.json
-wrong_pass.json
-wrong_email.json
-wrong_tenant.json
-cookies.txt
+# Local test files
+tests/
