@@ -5,7 +5,13 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.rate_limit import check_rate_limit
 from app.core.security import validate_jwt
 
-_SKIP_AUTH_PATHS: frozenset[str] = frozenset({"/health"})
+_SKIP_AUTH_PATHS: frozenset[str] = frozenset({
+    "/health",
+    "/api/v1/identity/auth/register",
+    "/api/v1/identity/auth/login",
+    "/api/v1/identity/auth/refresh",
+    "/api/v1/identity/auth/logout",
+})
 
 
 class AuthMiddleware:
