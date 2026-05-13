@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
-from app.models import RefreshToken, Role, Tenant, User, UserRole  # noqa: F401
+from app.models import Chunk, Document  # noqa: F401
 from stratum_libs.models.base import Base
 
 config = context.config
@@ -27,7 +27,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
-        version_table="alembic_version_identity",
+        version_table="alembic_version_ingestion",
     )
 
     with context.begin_transaction():
@@ -39,7 +39,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
-        version_table="alembic_version_identity",
+        version_table="alembic_version_ingestion",
     )
 
     with context.begin_transaction():
