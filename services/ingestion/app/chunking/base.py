@@ -9,6 +9,7 @@ class ChunkData:
     token_count: int
     section_title: str | None
     parent_chunk_id: str | None
+    qdrant_id: str | None = None
     extra_metadata: dict = field(default_factory=dict)
 
 
