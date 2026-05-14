@@ -23,6 +23,7 @@ dependencies = [
     "sentence-transformers",
     "qdrant-client",
     "arq",
+    "python-multipart",
 ]
 
 [tool.hatch.build.targets.wheel]
