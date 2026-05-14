@@ -2,7 +2,7 @@ import uuid
 from typing import Any
 
 import structlog
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
@@ -88,5 +88,12 @@ class DocumentRepository:
             update(Document)
             .where(Document.id == document_id, Document.tenant_id == tenant_id)
             .values(chunk_count=count)
+            .execution_options(synchronize_session=False)
+        )
+
+    async def delete_by_id(self, document_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
+        await self._session.execute(
+            delete(Document)
+            .where(Document.id == document_id, Document.tenant_id == tenant_id)
             .execution_options(synchronize_session=False)
         )
