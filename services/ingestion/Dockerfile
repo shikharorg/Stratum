@@ -1,25 +1,26 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     tesseract-ocr \
+    tesseract-ocr-eng \
+    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv
 
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
 WORKDIR /app
 
 COPY libs/ ./libs/
-RUN uv pip install --system --no-cache ./libs
+RUN uv pip install --system -e ./libs
 
-COPY services/ingestion/pyproject.toml ./pyproject.toml
-RUN uv pip install --system --no-cache .
+COPY services/ingestion/ ./services/ingestion/
+RUN uv pip install --system -e ./services/ingestion
 
-COPY services/ingestion/app/ ./app/
-COPY services/ingestion/alembic/ ./alembic/
-COPY services/ingestion/alembic.ini ./alembic.ini
+WORKDIR /app/services/ingestion
 
+RUN adduser --disabled-password --gecos "" appuser
 USER appuser
 
 EXPOSE 8000

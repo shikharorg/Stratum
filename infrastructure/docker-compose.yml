@@ -62,11 +62,11 @@ services:
     networks:
       - stratum-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:6333/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -95,6 +95,79 @@ services:
       retries: 5
       start_period: 30s
 
+  minio:
+    image: minio/minio:latest
+    container_name: stratum-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    labels:
+      - "project=stratum"
+      - "component=minio"
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - stratum-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || wget --spider -q http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  ingestion:
+    container_name: stratum-ingestion
+    build:
+      context: ../
+      dockerfile: services/ingestion/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=ingestion"
+    env_file: ../services/ingestion/.env.docker
+    ports:
+      - "8002:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_started
+
+  ingestion-worker:
+    container_name: stratum-ingestion-worker
+    build:
+      context: ../
+      dockerfile: services/ingestion/Dockerfile
+    restart: unless-stopped
+    command: python -m arq app.workers.ingestion_worker.WorkerSettings
+    labels:
+      - "project=stratum"
+      - "component=ingestion-worker"
+    env_file: ../services/ingestion/.env.docker
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_started
+
 networks:
   stratum-network:
     driver: bridge
@@ -104,3 +177,4 @@ volumes:
   redis_data:
   qdrant_data:
   pgadmin_data:
+  minio_data:
