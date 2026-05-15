@@ -12,5 +12,10 @@ class IngestionSettings(BaseSettings):
     ENVIRONMENT: str = "development"
     SERVICE_NAME: str = "ingestion"
 
+    MINIO_URL: str
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
+    MINIO_BUCKET: str
+
 
 settings = IngestionSettings()

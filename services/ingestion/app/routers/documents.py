@@ -1,5 +1,3 @@
-import os
-import tempfile
 import uuid
 
 import structlog
@@ -10,11 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from stratum_libs.auth import RequestContext
 
 from app.db import get_session
-from app.dependencies import get_arq_pool, get_indexer, get_request_context
+from app.dependencies import get_arq_pool, get_indexer, get_minio_client, get_request_context
 from app.embedding.indexer import QdrantIndexer
 from app.repositories.chunk import ChunkRepository
 from app.repositories.document import DocumentRepository
 from app.schemas.document import DocumentList, DocumentResponse
+from app.storage.minio_client import MinIOClient
 
 logger = structlog.get_logger()
 
@@ -32,6 +31,7 @@ async def upload_document(
     session: AsyncSession = Depends(get_session),
     ctx: RequestContext = Depends(get_request_context),
     arq_pool: ArqRedis = Depends(get_arq_pool),
+    minio_client: MinIOClient = Depends(get_minio_client),
 ) -> DocumentResponse:
     if source_type not in _VALID_SOURCE_TYPES:
         raise HTTPException(
@@ -59,18 +59,7 @@ async def upload_document(
 
     tenant_uuid = uuid.UUID(ctx.tenant_id)
     filename = file.filename or "unknown"
-
-    fd, temp_path = tempfile.mkstemp(suffix=f"_{filename}")
-    try:
-        os.close(fd)
-        with open(temp_path, "wb") as tmp:
-            tmp.write(file_bytes)
-    except Exception:
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
-        raise
+    content_type = file.content_type or "application/octet-stream"
 
     doc_repo = DocumentRepository(session)
     document = await doc_repo.create(
@@ -82,21 +71,64 @@ async def upload_document(
     )
     await session.commit()
 
-    await arq_pool.enqueue_job(
-        "process_document",
-        document_id=str(document.id),
-        tenant_id=ctx.tenant_id,
-        temp_file_path=temp_path,
-        source_type=source_type,
-        source_url=source_url,
-        filename=filename,
-    )
+    object_key = f"{ctx.tenant_id}/{document.id}/{filename}"
+
+    try:
+        await minio_client.upload_file(object_key, file_bytes, content_type)
+    except Exception as exc:
+        logger.exception("documents.minio_upload_failed", document_id=str(document.id))
+        try:
+            await doc_repo.update_status(document.id, tenant_uuid, "failed", str(exc))
+            await session.commit()
+        except Exception:
+            logger.exception("documents.failed_status_update_failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "type": "about:blank",
+                "title": "Storage error",
+                "status": 500,
+                "detail": "Failed to upload file to object storage",
+            },
+        )
+
+    try:
+        await arq_pool.enqueue_job(
+            "process_document",
+            document_id=str(document.id),
+            tenant_id=ctx.tenant_id,
+            object_key=object_key,
+            source_type=source_type,
+            source_url=source_url,
+            filename=filename,
+        )
+    except Exception as exc:
+        logger.exception("documents.arq_enqueue_failed", document_id=str(document.id))
+        try:
+            await minio_client.delete_file(object_key)
+        except Exception:
+            logger.exception("documents.minio_cleanup_failed", key=object_key)
+        try:
+            await doc_repo.update_status(document.id, tenant_uuid, "failed", str(exc))
+            await session.commit()
+        except Exception:
+            logger.exception("documents.failed_status_update_failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "type": "about:blank",
+                "title": "Queue error",
+                "status": 500,
+                "detail": "Failed to enqueue ingestion job",
+            },
+        )
 
     logger.info(
         "documents.upload_accepted",
         document_id=str(document.id),
         tenant_id=ctx.tenant_id,
         source_type=source_type,
+        object_key=object_key,
     )
 
     return DocumentResponse.model_validate(document)

@@ -1,5 +1,4 @@
 import json
-import os
 import uuid as uuid_module
 from datetime import UTC, datetime
 from typing import Any
@@ -11,7 +10,7 @@ from app.chunking.preprocessor import preprocess_document
 from app.chunking.router import DocumentRouter
 from app.core.config import settings
 from app.db import AsyncSessionFactory
-from app.dependencies import get_encoder, get_indexer
+from app.dependencies import get_encoder, get_indexer, get_minio_client, get_sparse_encoder
 from app.repositories.chunk import ChunkRepository
 from app.repositories.document import DocumentRepository
 
@@ -41,7 +40,7 @@ async def process_document(
     *,
     document_id: str,
     tenant_id: str,
-    temp_file_path: str,
+    object_key: str,
     source_type: str,
     source_url: str | None,
     filename: str,
@@ -49,17 +48,17 @@ async def process_document(
     log = logger.bind(document_id=document_id, tenant_id=tenant_id)
     encoder = get_encoder()
     indexer = get_indexer()
+    minio_client = get_minio_client()
     doc_uuid = uuid_module.UUID(document_id)
     tenant_uuid = uuid_module.UUID(tenant_id)
 
     try:
-        with open(temp_file_path, "rb") as fh:
-            file_bytes = fh.read()
+        file_bytes = await minio_client.download_file(object_key)
     finally:
         try:
-            os.unlink(temp_file_path)
-        except OSError:
-            log.warning("worker.temp_cleanup_failed", path=temp_file_path)
+            await minio_client.delete_file(object_key)
+        except Exception:
+            log.warning("worker.minio_cleanup_failed", key=object_key)
 
     async with AsyncSessionFactory() as session:
         doc_repo = DocumentRepository(session)
@@ -95,13 +94,17 @@ async def process_document(
                     log.exception("worker.no_chunks_event_publish_failed")
                 return
 
-            texts = [c.text for c in chunks]
-            embeddings = encoder.encode(texts)
+            chunk_texts = [c.text for c in chunks]
+            embeddings = encoder.encode(chunk_texts)
+
+            sparse_encoder = get_sparse_encoder()
+            sparse_vectors = sparse_encoder.encode_sparse(chunk_texts)
 
             await indexer.ensure_collection(encoder)
             await indexer.index_chunks(
                 chunks,
                 embeddings,
+                sparse_vectors,
                 document_id,
                 tenant_id,
                 source_type,
