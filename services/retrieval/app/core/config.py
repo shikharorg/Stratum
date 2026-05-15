@@ -1,0 +1,20 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class RetrievalSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env.local", extra="ignore")
+
+    DATABASE_URL: str
+    REDIS_URL: str
+    QDRANT_URL: str
+    QDRANT_COLLECTION: str
+    EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    OPENAI_API_KEY: str | None = None
+    OPENAI_GENERATION_MODEL: str = "gpt-4o"
+    OPENAI_VALIDATION_MODEL: str = "gpt-4o-mini"
+    ENVIRONMENT: str = "development"
+    SERVICE_NAME: str = "retrieval"
+
+
+settings = RetrievalSettings()
