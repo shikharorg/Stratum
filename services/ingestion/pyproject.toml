@@ -24,6 +24,7 @@ dependencies = [
     "qdrant-client",
     "arq",
     "python-multipart",
+    "miniopy-async",
 ]
 
 [tool.hatch.build.targets.wheel]

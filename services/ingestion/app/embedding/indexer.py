@@ -8,7 +8,10 @@ from qdrant_client.models import (
     Filter,
     FilterSelector,
     MatchValue,
+    Modifier,
     PointStruct,
+    SparseVector,
+    SparseVectorParams,
     VectorParams,
 )
 
@@ -24,15 +27,40 @@ class QdrantIndexer:
         self._client = AsyncQdrantClient(url=settings.QDRANT_URL)
         self.collection_name = settings.QDRANT_COLLECTION
 
-    async def ensure_collection(self, encoder: EmbeddingEncoder) -> None:
+    async def ensure_collection(
+        self, encoder: EmbeddingEncoder, force_recreate: bool = False
+    ) -> None:
         exists = await self._client.collection_exists(collection_name=self.collection_name)
-        if exists:
-            return
+
+        if exists and force_recreate:
+            await self._client.delete_collection(collection_name=self.collection_name)
+            exists = False
+        elif exists:
+            info = await self._client.get_collection(collection_name=self.collection_name)
+            params = info.config.params
+            vectors = params.vectors
+            sparse = params.sparse_vectors
+
+            has_named_dense = isinstance(vectors, dict) and "dense" in vectors
+            has_named_sparse = sparse is not None and "sparse" in sparse
+
+            if has_named_dense and has_named_sparse:
+                return
+
+            logger.warning(
+                "indexer.schema_mismatch_recreating",
+                collection=self.collection_name,
+                has_named_dense=has_named_dense,
+                has_named_sparse=has_named_sparse,
+            )
+            await self._client.delete_collection(collection_name=self.collection_name)
+            exists = False
 
         vector_size = len(encoder.encode(["__init__"])[0])
         await self._client.create_collection(
             collection_name=self.collection_name,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            vectors_config={"dense": VectorParams(size=vector_size, distance=Distance.COSINE)},
+            sparse_vectors_config={"sparse": SparseVectorParams(modifier=Modifier.IDF)},
         )
         logger.info(
             "indexer.collection_created",
@@ -44,25 +72,33 @@ class QdrantIndexer:
         self,
         chunks: list[ChunkData],
         embeddings: list[list[float]],
+        sparse_vectors: list[dict],
         document_id: str,
         tenant_id: str,
         source_type: str,
         source_url: str | None,
     ) -> list[str]:
-        if len(chunks) != len(embeddings):
+        if not (len(chunks) == len(embeddings) == len(sparse_vectors)):
             raise ValueError(
-                f"chunk count {len(chunks)} does not match embedding count {len(embeddings)}"
+                f"chunk count {len(chunks)}, embedding count {len(embeddings)}, "
+                f"sparse count {len(sparse_vectors)} must all match"
             )
 
         points: list[PointStruct] = []
-        for chunk, vector in zip(chunks, embeddings):
+        for chunk, dense_vec, sparse_vec in zip(chunks, embeddings, sparse_vectors):
             if chunk.qdrant_id is None:
                 chunk.qdrant_id = str(uuid.uuid4())
 
             points.append(
                 PointStruct(
                     id=chunk.qdrant_id,
-                    vector=vector,
+                    vector={
+                        "dense": dense_vec,
+                        "sparse": SparseVector(
+                            indices=sparse_vec["indices"],
+                            values=sparse_vec["values"],
+                        ),
+                    },
                     payload={
                         "tenant_id": tenant_id,
                         "document_id": document_id,
