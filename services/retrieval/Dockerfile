@@ -13,6 +13,8 @@ WORKDIR /app
 COPY libs/ ./libs/
 RUN uv pip install --system -e ./libs
 
+RUN uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY services/retrieval/ ./services/retrieval/
 RUN uv pip install --system -e ./services/retrieval
 
