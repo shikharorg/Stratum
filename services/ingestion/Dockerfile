@@ -15,6 +15,8 @@ WORKDIR /app
 COPY libs/ ./libs/
 RUN uv pip install --system -e ./libs
 
+RUN uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY services/ingestion/ ./services/ingestion/
 RUN uv pip install --system -e ./services/ingestion
 
