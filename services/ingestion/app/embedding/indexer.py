@@ -104,6 +104,7 @@ class QdrantIndexer:
                         "document_id": document_id,
                         "source_type": source_type,
                         "source_url": source_url,
+                        "text": chunk.text,
                         "chunk_index": chunk.chunk_index,
                         "section_title": chunk.section_title,
                         "token_count": chunk.token_count,
