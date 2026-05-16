@@ -168,6 +168,28 @@ services:
       minio:
         condition: service_started
 
+  retrieval:
+    container_name: stratum-retrieval
+    build:
+      context: ../
+      dockerfile: services/retrieval/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=retrieval"
+    env_file: ../services/retrieval/.env.docker
+    ports:
+      - "8003:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+
 networks:
   stratum-network:
     driver: bridge
