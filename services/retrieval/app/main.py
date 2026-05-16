@@ -1,0 +1,40 @@
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+import structlog
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+
+from app.core.config import settings
+from app.db import engine
+from app.routers.retrieval import router as retrieval_router
+
+logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.info("app.starting", service=settings.SERVICE_NAME, environment=settings.ENVIRONMENT)
+    logger.info("app.started", service=settings.SERVICE_NAME)
+
+    yield
+
+    await engine.dispose()
+    logger.info("app.shutdown", service=settings.SERVICE_NAME)
+
+
+app = FastAPI(
+    title="Stratum Retrieval Service",
+    version="0.1.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+    lifespan=lifespan,
+)
+
+app.include_router(retrieval_router, prefix="/api/v1")
+
+
+@app.get("/health", include_in_schema=False)
+async def health() -> JSONResponse:
+    return JSONResponse({"status": "healthy"})

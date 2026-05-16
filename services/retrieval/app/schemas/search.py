@@ -16,5 +16,6 @@ class SearchResult(BaseModel):
     dense_score: float
     sparse_score: float
     rrf_score: float
+    combined_score: float = 0.0
     source_type: str
     source_url: str | None

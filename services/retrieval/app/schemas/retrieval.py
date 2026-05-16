@@ -8,6 +8,7 @@ class RetrievalRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=4096)
     source_filter: str | None = Field(None, description="Filter by source_type (e.g. 'pdf', 'url')")
     top_k: int = Field(5, ge=1, le=20)
+    include_generation: bool = True
 
 
 class ChunkResult(BaseModel):
