@@ -190,6 +190,45 @@ services:
       qdrant:
         condition: service_started
 
+  workflow:
+    container_name: stratum-workflow
+    build:
+      context: ../
+      dockerfile: services/workflow/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=workflow"
+    env_file: ../services/workflow/.env.docker
+    ports:
+      - "8004:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  workflow-worker:
+    container_name: stratum-workflow-worker
+    build:
+      context: ../
+      dockerfile: services/workflow/Dockerfile
+    restart: unless-stopped
+    command: python -m arq app.workers.workflow_worker.WorkerSettings
+    labels:
+      - "project=stratum"
+      - "component=workflow-worker"
+    env_file: ../services/workflow/.env.docker
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+
 networks:
   stratum-network:
     driver: bridge
