@@ -28,6 +28,7 @@ ENV/
 .env.docker
 .env.bak
 
+
 # uv
 .uv/
 
@@ -95,8 +96,6 @@ logs/
 # Ruff
 .ruff_cache/
 
-# Development
-Development.md
 
 # Python tooling
 .pytype/

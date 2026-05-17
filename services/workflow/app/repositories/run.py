@@ -100,10 +100,13 @@ class WorkflowRunRepository:
         tenant_id: uuid.UUID,
         status: str,
         error_message: str | None = None,
+        started_at: datetime | None = None,
     ) -> None:
         values: dict = {"status": status}
         if error_message is not None:
             values["error_message"] = error_message
+        if started_at is not None:
+            values["started_at"] = started_at
         await self._session.execute(
             update(WorkflowRun)
             .where(WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id)
