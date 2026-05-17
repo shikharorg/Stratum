@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 
 class RunRequest(BaseModel):
-    workflow_id: uuid.UUID
     input_data: dict
 
 

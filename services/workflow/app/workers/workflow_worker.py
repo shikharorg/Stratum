@@ -76,8 +76,25 @@ async def execute_workflow(
             }
 
             thread_config = {"configurable": {"thread_id": run_id}}
+            cancel_key = f"arq:cancel:{run_id}"
+            redis = ctx["redis"]
 
-            final_state: GraphState = await graph.ainvoke(initial_state, thread_config)
+            final_state: GraphState = initial_state
+            cancelled = False
+
+            async for state_update in graph.astream(initial_state, thread_config, stream_mode="values"):
+                final_state = state_update
+                flag = await redis.get(cancel_key)
+                if flag:
+                    await redis.delete(cancel_key)
+                    cancelled = True
+                    break
+
+            if cancelled:
+                await run_repo.update_status(run_uuid, tenant_uuid, "cancelled")
+                await session.commit()
+                log.info("worker.workflow_cancelled")
+                return
 
             latency_ms = int((time.monotonic() - start) * 1000)
 
