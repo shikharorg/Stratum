@@ -9,6 +9,8 @@ import httpx
 import structlog
 from arq.connections import RedisSettings
 
+from sqlalchemy import select
+
 from app.connectors.base import BaseConnector
 from app.connectors.github import GitHubConnector
 from app.connectors.jira import JiraConnector
@@ -16,6 +18,7 @@ from app.connectors.slack import SlackConnector
 from app.core.config import settings
 from app.crypto import decrypt_credentials
 from app.db import AsyncSessionFactory
+from app.models.connector import Connector
 from app.repositories.connector import ConnectorRepository
 from app.repositories.run import ConnectorRunRepository
 
@@ -137,8 +140,88 @@ async def sync_connector(
                 log.exception("sync_worker.fail_status_update_failed")
 
 
+async def process_webhook(
+    ctx: dict[str, Any],
+    *,
+    connector_id: str,
+    connector_type: str,
+    payload: dict,
+) -> None:
+    log = logger.bind(connector_id=connector_id, connector_type=connector_type)
+    connector_uuid = uuid_module.UUID(connector_id)
+
+    async with AsyncSessionFactory() as session:
+        result = await session.execute(
+            select(Connector).where(Connector.id == connector_uuid)
+        )
+        connector = result.scalar_one_or_none()
+        if connector is None:
+            log.warning("process_webhook.connector_not_found")
+            return
+
+        tenant_uuid = connector.tenant_id
+        tenant_id = str(tenant_uuid)
+
+        credentials = decrypt_credentials(connector.credentials)
+        connector_class = add_connector_router(connector_type)
+        impl = connector_class(connector, credentials)
+
+        run_repo = ConnectorRunRepository(session)
+        run = await run_repo.create(
+            tenant_id=tenant_uuid,
+            connector_id=connector_uuid,
+            run_type="webhook",
+            extra_metadata={},
+        )
+        await session.commit()
+
+        try:
+            formatted_items = await impl.handle_webhook(payload)
+            items_ingested = 0
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                for doc in formatted_items:
+                    try:
+                        response = await client.post(
+                            f"{settings.INGESTION_SERVICE_URL}/api/v1/documents/ingest",
+                            json={**doc, "tenant_id": tenant_id},
+                            headers={
+                                "X-Tenant-ID": tenant_id,
+                                "X-User-ID": "connector-service",
+                            },
+                        )
+                        response.raise_for_status()
+                        items_ingested += 1
+                    except Exception as exc:
+                        log.warning("process_webhook.ingest_item_failed", error=str(exc))
+
+            await run_repo.complete(run.id, tenant_uuid, items_ingested)
+            await session.commit()
+
+            log.info("process_webhook.completed", items_ingested=items_ingested)
+
+            try:
+                await _publish(
+                    ctx["redis"],
+                    "connector.webhook.completed",
+                    tenant_id,
+                    {"connector_id": connector_id, "tenant_id": tenant_id, "items_ingested": items_ingested},
+                )
+            except Exception:
+                log.exception("process_webhook.publish_failed")
+
+        except Exception as exc:
+            log.exception("process_webhook.failed", error=str(exc))
+            try:
+                async with AsyncSessionFactory() as err_session:
+                    await ConnectorRunRepository(err_session).fail(run.id, tenant_uuid, str(exc))
+                    await err_session.commit()
+            except Exception:
+                log.exception("process_webhook.fail_status_update_failed")
+
+
 class WorkerSettings:
-    functions = [sync_connector]
+    functions = [sync_connector, process_webhook]
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     max_jobs: int = 20
     job_timeout: int = 300
