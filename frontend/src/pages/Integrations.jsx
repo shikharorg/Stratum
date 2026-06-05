@@ -17,23 +17,25 @@ function ConnectorCard({ connector }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        backgroundColor: hovered ? colors.surfaceHover : colors.surface,
+        backgroundColor: isError
+          ? hovered ? 'rgba(239, 68, 68, 0.07)' : 'rgba(239, 68, 68, 0.04)'
+          : hovered ? colors.surfaceHover : colors.surface,
         border: `1px solid ${colors.border}`,
         borderLeftWidth: isError ? '4px' : '1px',
         borderLeftColor: isError ? colors.error : colors.border,
         borderRadius: '6px',
-        padding: '16px',
+        padding: '12px 16px',
         transition: 'background-color 0.15s ease',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
         <div>
           <div style={{
             fontFamily: typography.fontUI,
             fontSize: typography.sizes.base,
             fontWeight: typography.weights.medium,
             color: colors.text,
-            marginBottom: '3px',
+            marginBottom: '2px',
           }}>
             {connector.name}
           </div>
@@ -41,7 +43,7 @@ function ConnectorCard({ connector }) {
             fontFamily: typography.fontUI,
             fontSize: typography.sizes.sm,
             color: colors.textMuted,
-            marginBottom: isError ? '4px' : '0',
+            marginBottom: isError ? '2px' : '0',
           }}>
             {connector.type}
           </div>
@@ -99,7 +101,7 @@ function ConnectorCard({ connector }) {
             fontSize: typography.sizes.xs,
             color: colors.textMuted,
           }}>
-            {connector.lastSync}
+            {isError ? `Since ${connector.lastSync}` : `Last sync ${connector.lastSync}`}
           </span>
         </div>
       </div>
@@ -199,6 +201,15 @@ export default function Integrations() {
         >
           + Add Integration
         </button>
+      </div>
+
+      <div style={{
+        fontFamily: typography.fontMono,
+        fontSize: typography.sizes.xs,
+        color: colors.textMuted,
+        marginBottom: '24px',
+      }}>
+        {mockConnectors.length} connectors · {mockConnectors.filter(c => c.status === 'active').length} active · {mockConnectors.filter(c => c.status === 'error').length} error · {mockConnectors.filter(c => c.status === 'inactive').length} inactive
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '36px' }}>
