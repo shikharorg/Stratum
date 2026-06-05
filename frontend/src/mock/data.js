@@ -66,3 +66,20 @@ export const mockAvailableIntegrations = [
   { type: 'jira', name: 'Jira', description: 'Project tickets' },
   { type: 'github', name: 'GitHub', description: 'Issues and PRs' },
 ];
+
+export const mockTeamMembers = [
+  { id: '1', name: 'Alex Chen', email: 'admin@test.com', role: 'Admin' },
+  { id: '2', name: 'John Smith', email: 'john@test.com', role: 'Member' },
+  { id: '3', name: 'Sarah Park', email: 'sarah@test.com', role: 'Member' },
+];
+
+export const mockTenant = {
+  name: 'Stratum Test',
+  slug: 'stratum-test',
+  apiKeyPreview: 'sk_live_',
+};
+
+export const mockProfile = {
+  email: 'admin@test.com',
+  role: 'Admin',
+};

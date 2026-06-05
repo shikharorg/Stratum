@@ -32,16 +32,16 @@ function SectionLabel({ left, right }) {
   );
 }
 
-function SourceRow({ chunk, isLast }) {
+function SourceRow({ chunk, isFirst, isLast }) {
   const preview = chunk.text.replace(/^#+\s+[^\n]+\n+/, '').slice(0, 120);
 
   return (
     <div style={{
-      paddingTop: '12px',
+      paddingTop: isFirst ? '0' : '12px',
       paddingBottom: '12px',
       borderBottom: isLast ? 'none' : `1px solid ${colors.borderSubtle}`,
     }}>
-      <div style={{ marginBottom: '4px' }}>
+      <div style={{ marginBottom: '2px' }}>
         <span style={{
           fontFamily: typography.fontUI,
           fontSize: typography.sizes.base,
@@ -70,7 +70,7 @@ function SourceRow({ chunk, isLast }) {
         fontFamily: typography.fontUI,
         fontSize: typography.sizes.sm,
         color: colors.textSecondary,
-        lineHeight: 1.6,
+        lineHeight: 1.5,
       }}>
         {preview}
       </div>
@@ -154,33 +154,45 @@ export default function Search() {
 
       {hasResult && (
         <>
-          <div style={{ marginTop: '24px' }}>
+          <div className="scroll-dark" style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            padding: '20px',
+            marginTop: '20px',
+            height: '55vh',
+            overflowY: 'auto',
+          }}>
             <SectionLabel left="Answer" right={result.latency} />
-            <div style={{ maxHeight: '460px', overflowY: 'auto', paddingRight: '8px' }}>
-              <div style={{
-                fontFamily: typography.fontUI,
-                fontSize: typography.sizes.lg,
-                color: colors.text,
-                lineHeight: 1.8,
-                maxWidth: '680px',
-              }}>
-                {result.answer}
-              </div>
+            <div style={{
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.lg,
+              color: colors.text,
+              lineHeight: 1.8,
+              maxWidth: '680px',
+            }}>
+              {result.answer}
             </div>
           </div>
 
-          <div style={{ borderTop: `1px solid ${colors.borderSubtle}`, marginTop: '24px' }} />
-
-          <div style={{ marginTop: '16px' }}>
-            <SectionLabel
-              left="Sources"
-              right={`${result.chunks.length} results`}
-            />
-            <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
-              {result.chunks.map((chunk, i) => (
-                <SourceRow key={i} chunk={chunk} isLast={i === result.chunks.length - 1} />
-              ))}
-            </div>
+          <div className="scroll-dark" style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            padding: '20px',
+            marginTop: '12px',
+            height: '28vh',
+            overflowY: 'auto',
+          }}>
+            <SectionLabel left="Sources" right={`${result.chunks.length} results`} />
+            {result.chunks.map((chunk, i) => (
+              <SourceRow
+                key={i}
+                chunk={chunk}
+                isFirst={i === 0}
+                isLast={i === result.chunks.length - 1}
+              />
+            ))}
           </div>
         </>
       )}
