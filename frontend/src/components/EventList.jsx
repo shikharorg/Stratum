@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { colors, typography } from '../theme';
 
-const events = [
-  { dotColor: colors.success, text: 'test_doc.md indexed', secondary: null, time: '2m ago', textColor: colors.text },
-  { dotColor: colors.textMuted, text: 'Search completed', secondary: '"What is Stratum?"', time: '5m ago', textColor: colors.text },
-  { dotColor: colors.textMuted, text: 'RAG Workflow completed', secondary: null, time: '12m ago', textColor: colors.text },
-  { dotColor: colors.textMuted, text: 'Slack synchronized', secondary: null, time: '1h ago', textColor: colors.text },
-  { dotColor: colors.error, text: 'RAG Workflow failed', secondary: null, time: '3h ago', textColor: colors.error },
-];
+function dotColorFor(status) {
+  return status === 'error' ? colors.error : colors.textMuted;
+}
+
+function textColorFor(status) {
+  return status === 'error' ? colors.error : colors.text;
+}
 
 function EventRow({ event, isLast }) {
   const [hovered, setHovered] = useState(false);
+  const dotColor = dotColorFor(event.status);
+  const textColor = textColorFor(event.status);
 
   return (
     <div
@@ -31,18 +33,18 @@ function EventRow({ event, isLast }) {
           width: '6px',
           height: '6px',
           borderRadius: '50%',
-          backgroundColor: event.dotColor,
+          backgroundColor: dotColor,
           flexShrink: 0,
         }} />
         <span style={{
           fontFamily: typography.fontUI,
           fontSize: typography.sizes.base,
-          color: event.textColor,
+          color: textColor,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
-          {event.text}
+          {event.primary}
         </span>
         {event.secondary && (
           <span style={{
@@ -70,13 +72,13 @@ function EventRow({ event, isLast }) {
   );
 }
 
-export default function EventList() {
+export default function EventList({ events }) {
   const [viewAllHovered, setViewAllHovered] = useState(false);
 
   return (
     <div>
       {events.map((event, i) => (
-        <EventRow key={i} event={event} isLast={i === events.length - 1} />
+        <EventRow key={event.id} event={event} isLast={i === events.length - 1} />
       ))}
       <div style={{ marginTop: '16px' }}>
         <span

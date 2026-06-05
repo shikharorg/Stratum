@@ -5,13 +5,9 @@ import SectionHeader from '../components/SectionHeader';
 import StatCard from '../components/StatCard';
 import ActivityCard from '../components/ActivityCard';
 import EventList from '../components/EventList';
+import { mockStats, mockActiveNow, mockNeedsAttention, mockRecentEvents } from '../mock/data';
 
-const attentionItems = [
-  '2 documents stuck in processing',
-  'Jira hasn\'t synced in 6 hours',
-];
-
-function AttentionCard({ text }) {
+function AttentionCard({ item }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -38,7 +34,7 @@ function AttentionCard({ text }) {
         fontSize: typography.sizes.base,
         color: colors.text,
       }}>
-        {text}
+        {item.message}
       </span>
       <div style={{
         display: 'flex',
@@ -64,17 +60,17 @@ export default function Dashboard() {
       <div style={{ marginBottom: '28px' }}>
         <SectionHeader>Overview</SectionHeader>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <StatCard value="12,481" label="Documents" delta="+124 today" deltaColor={colors.success} />
-          <StatCard value="3" label="Connectors" delta="all active" deltaColor={colors.textMuted} />
-          <StatCard value="2" label="Running" delta="now" deltaColor={colors.running} />
+          <StatCard value={mockStats.documents.count} label="Documents" delta={mockStats.documents.delta} deltaColor={colors.success} />
+          <StatCard value={mockStats.connectors.count} label="Connectors" delta={mockStats.connectors.status} deltaColor={colors.textMuted} />
+          <StatCard value={mockStats.running.count} label="Running" delta={mockStats.running.status} deltaColor={colors.running} />
         </div>
       </div>
 
       <div style={{ marginBottom: '24px' }}>
         <SectionHeader>Needs attention</SectionHeader>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {attentionItems.map((text, i) => (
-            <AttentionCard key={i} text={text} />
+          {mockNeedsAttention.map(item => (
+            <AttentionCard key={item.id} item={item} />
           ))}
         </div>
       </div>
@@ -82,14 +78,15 @@ export default function Dashboard() {
       <div style={{ marginBottom: '24px' }}>
         <SectionHeader>Active now</SectionHeader>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <ActivityCard name="RAG Workflow running" startedAgo="2m" />
-          <ActivityCard name="Slack synchronizing" startedAgo="8m" />
+          {mockActiveNow.map(item => (
+            <ActivityCard key={item.id} name={item.name} startedAgo={item.startedAgo} />
+          ))}
         </div>
       </div>
 
       <div>
         <SectionHeader>Recent</SectionHeader>
-        <EventList />
+        <EventList events={mockRecentEvents} />
       </div>
     </div>
   );

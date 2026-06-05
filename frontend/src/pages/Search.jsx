@@ -1,23 +1,8 @@
 import { useState } from 'react';
 import { colors, typography } from '../theme';
+import { mockSearchResult } from '../mock/data';
 
-const MOCK_RESULT = {
-  query: 'What is Stratum?',
-  answer: 'Stratum is an enterprise-grade AI Operations Platform. It acts as the AI operational layer for a company — retrieving enterprise knowledge, automating workflows, coordinating agents, and integrating with external systems like Slack, Jira, and GitHub.',
-  latency: '116ms',
-  chunks: [
-    {
-      text: '# What is Stratum\n\nStratum is an enterprise-grade AI Operations Platform. It acts as the AI operational layer for a company — retrieving enterprise knowledge, automating workflows, coordinating agents, and integrating with external systems like Slack, Jira, and GitHub.',
-      source: 'test_doc.md',
-      sourceType: 'markdown',
-    },
-    {
-      text: '# Core Features\n\nStratum provides hybrid RAG retrieval using dense and sparse vectors, multi-tenant isolation, async workflow orchestration via LangGraph, and full observability of every LLM call and retrieval operation.',
-      source: 'test_doc.md',
-      sourceType: 'markdown',
-    },
-  ],
-};
+const MOCK_RESULT = mockSearchResult;
 
 function SectionLabel({ left, right }) {
   return (

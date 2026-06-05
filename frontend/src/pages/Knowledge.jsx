@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
+import { mockDocuments } from '../mock/data';
 
-const documents = [
-  { id: '14f6b9a6', name: 'test_doc.md', sourceType: 'markdown', status: 'completed', chunkCount: 2, fileSize: '2.4 KB', uploadedAt: '2m ago' },
-  { id: 'bc23ef45', name: 'engineering_handbook.pdf', sourceType: 'pdf', status: 'completed', chunkCount: 47, fileSize: '1.2 MB', uploadedAt: '1h ago' },
-  { id: 'de34gh56', name: 'product_roadmap.pdf', sourceType: 'pdf', status: 'completed', chunkCount: 23, fileSize: '840 KB', uploadedAt: '3h ago' },
-  { id: 'fg45ij67', name: 'slack_export.json', sourceType: 'slack', status: 'processing', chunkCount: null, fileSize: '156 KB', uploadedAt: '5m ago' },
-  { id: 'gh56kl78', name: 'api_docs.md', sourceType: 'markdown', status: 'failed', chunkCount: null, fileSize: '18 KB', uploadedAt: '1d ago' },
-];
+const documents = mockDocuments;
 
 const COL = { name: '1fr', type: '90px', status: '110px', chunks: '70px', size: '80px', uploaded: '80px' };
 

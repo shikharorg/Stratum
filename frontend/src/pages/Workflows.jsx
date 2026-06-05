@@ -2,20 +2,10 @@ import { useState } from 'react';
 import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
 import StatusBadge from '../components/StatusBadge';
+import { mockWorkflows, mockWorkflowRuns } from '../mock/data';
 
-const definitions = [
-  { id: 'ff00a735', name: 'RAG Workflow', description: 'Retrieves and generates answers from ingested documents', status: 'active', lastRun: '2m ago', successRate: '98%', totalRuns: 247 },
-  { id: 'ab12cd34', name: 'Document Summary', description: 'Summarizes newly ingested documents automatically', status: 'active', lastRun: '1h ago', successRate: '100%', totalRuns: 89 },
-  { id: 'ef56gh78', name: 'Slack Digest', description: 'Generates daily digest from Slack channel activity', status: 'inactive', lastRun: '2d ago', successRate: '91%', totalRuns: 34 },
-];
-
-const recentRuns = [
-  { id: 'cd8432af', workflow: 'RAG Workflow', status: 'completed', duration: '5.3s', startedAt: '2m ago' },
-  { id: 'aa886fd9', workflow: 'RAG Workflow', status: 'completed', duration: '2.1s', startedAt: '15m ago' },
-  { id: '13432136', workflow: 'Document Summary', status: 'completed', duration: '1.8s', startedAt: '1h ago' },
-  { id: '5ba792f4', workflow: 'RAG Workflow', status: 'failed', duration: '1.2s', startedAt: '3h ago' },
-  { id: 'bb991cc2', workflow: 'Slack Digest', status: 'completed', duration: '8.7s', startedAt: '2d ago' },
-];
+const definitions = mockWorkflows;
+const recentRuns = mockWorkflowRuns;
 
 const COL = { id: '90px', workflow: '1fr', status: '110px', duration: '80px', started: '90px' };
 
