@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -9,6 +9,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { colors, typography } from '../theme';
+import { logout } from '../api/auth';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -61,6 +62,14 @@ function NavItem({ to, icon: Icon, label }) {
 }
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const [signOutHovered, setSignOutHovered] = useState(false);
+
+  async function handleSignOut() {
+    await logout();
+    navigate('/login');
+  }
+
   return (
     <div style={{
       position: 'fixed',
@@ -168,6 +177,23 @@ export default function Sidebar() {
             Admin
           </div>
         </div>
+      </div>
+
+      <div
+        onMouseEnter={() => setSignOutHovered(true)}
+        onMouseLeave={() => setSignOutHovered(false)}
+        onClick={handleSignOut}
+        style={{
+          borderTop: `1px solid ${colors.borderSubtle}`,
+          padding: '12px 16px',
+          fontFamily: typography.fontUI,
+          fontSize: typography.sizes.sm,
+          color: signOutHovered ? colors.text : colors.textMuted,
+          cursor: 'pointer',
+          transition: 'color 0.15s ease',
+        }}
+      >
+        Sign Out
       </div>
     </div>
   );

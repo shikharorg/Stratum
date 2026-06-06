@@ -7,6 +7,7 @@ import httpx
 import redis.asyncio as aioredis
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
@@ -54,6 +55,13 @@ app = FastAPI(
     openapi_url=None,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(ContextMiddleware)
 
