@@ -55,6 +55,8 @@ app = FastAPI(
     openapi_url=None,
 )
 
+app.add_middleware(AuthMiddleware)
+app.add_middleware(ContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -62,8 +64,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(AuthMiddleware)
-app.add_middleware(ContextMiddleware)
 
 
 @app.get("/health")

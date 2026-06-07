@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { colors, typography } from '../theme';
-import { mockSearchResult } from '../mock/data';
-
-const MOCK_RESULT = mockSearchResult;
+import apiClient from '../api/client';
 
 function SectionLabel({ left, right }) {
   return (
@@ -33,6 +31,7 @@ function SectionLabel({ left, right }) {
 }
 
 function SourceRow({ chunk, isFirst, isLast }) {
+  const source = chunk.source_url || `doc ${chunk.document_id?.slice(0, 8) ?? ''}`;
   const preview = chunk.text.replace(/^#+\s+[^\n]+\n+/, '').slice(0, 120);
 
   return (
@@ -48,7 +47,7 @@ function SourceRow({ chunk, isFirst, isLast }) {
           fontWeight: typography.weights.medium,
           color: colors.text,
         }}>
-          {chunk.source}
+          {source}
         </span>
         <span style={{
           fontFamily: typography.fontUI,
@@ -63,7 +62,7 @@ function SourceRow({ chunk, isFirst, isLast }) {
           fontSize: typography.sizes.sm,
           color: colors.textMuted,
         }}>
-          {chunk.sourceType}
+          {chunk.source_type}
         </span>
       </div>
       <div style={{
@@ -79,12 +78,47 @@ function SourceRow({ chunk, isFirst, isLast }) {
 }
 
 export default function Search() {
-  const [inputValue, setInputValue] = useState(MOCK_RESULT.query);
-  const [result, setResult] = useState(MOCK_RESULT);
+  const [query, setQuery] = useState('');
+  const [result, setResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [searchHovered, setSearchHovered] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
 
   const hasResult = result !== null;
+  const chunks = result?.result?.chunks ?? [];
+  const answer = result?.result?.answer ?? '';
+  const grounding = result?.result?.grounding_passed;
+  const latency = result?.result?.latency_ms != null ? `${result.result.latency_ms}ms` : '';
+
+  async function handleSearch() {
+    if (!query.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const response = await apiClient.post('/api/v1/retrieval/retrieve', {
+        query: query.trim(),
+        top_k: 5,
+        include_generation: true,
+      });
+      setResult(response.data);
+    } catch (err) {
+      console.error(err);
+      console.error(err.response?.data);
+      setError(
+        err.response?.data?.detail ||
+        err.message ||
+        'Search failed'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') handleSearch();
+  }
 
   return (
     <div>
@@ -101,8 +135,9 @@ export default function Search() {
       <div style={{ display: 'flex', gap: '8px' }}>
         <input
           type="text"
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
           placeholder="Ask anything about your knowledge base..."
@@ -120,6 +155,7 @@ export default function Search() {
           }}
         />
         <button
+          onClick={handleSearch}
           onMouseEnter={() => setSearchHovered(true)}
           onMouseLeave={() => setSearchHovered(false)}
           style={{
@@ -140,7 +176,18 @@ export default function Search() {
         </button>
       </div>
 
-      {!hasResult && (
+      {error && (
+        <div style={{
+          fontFamily: typography.fontUI,
+          fontSize: typography.sizes.sm,
+          color: colors.error,
+          marginTop: '8px',
+        }}>
+          {error}
+        </div>
+      )}
+
+      {!hasResult && !isLoading && !error && (
         <div style={{
           textAlign: 'center',
           marginTop: '40px',
@@ -152,7 +199,7 @@ export default function Search() {
         </div>
       )}
 
-      {hasResult && (
+      {(hasResult || isLoading) && (
         <>
           <div className="scroll-dark" style={{
             backgroundColor: colors.surface,
@@ -163,37 +210,63 @@ export default function Search() {
             height: '55vh',
             overflowY: 'auto',
           }}>
-            <SectionLabel left="Answer" right={result.latency} />
-            <div style={{
-              fontFamily: typography.fontUI,
-              fontSize: typography.sizes.lg,
-              color: colors.text,
-              lineHeight: 1.8,
-              maxWidth: '680px',
-            }}>
-              {result.answer}
-            </div>
+            <SectionLabel left="Answer" right={latency} />
+            {isLoading ? (
+              <div style={{
+                fontFamily: typography.fontUI,
+                fontSize: typography.sizes.base,
+                color: colors.textMuted,
+                textAlign: 'center',
+                marginTop: '40px',
+              }}>
+                Searching...
+              </div>
+            ) : (
+              <>
+                {grounding === false && (
+                  <div style={{
+                    fontFamily: typography.fontUI,
+                    fontSize: typography.sizes.sm,
+                    color: colors.warning,
+                    marginBottom: '12px',
+                  }}>
+                    Response could not be fully grounded in retrieved sources.
+                  </div>
+                )}
+                <div style={{
+                  fontFamily: typography.fontUI,
+                  fontSize: typography.sizes.lg,
+                  color: colors.text,
+                  lineHeight: 1.8,
+                  maxWidth: '680px',
+                }}>
+                  {answer}
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="scroll-dark" style={{
-            backgroundColor: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: '6px',
-            padding: '20px',
-            marginTop: '12px',
-            height: '28vh',
-            overflowY: 'auto',
-          }}>
-            <SectionLabel left="Sources" right={`${result.chunks.length} results`} />
-            {result.chunks.map((chunk, i) => (
-              <SourceRow
-                key={i}
-                chunk={chunk}
-                isFirst={i === 0}
-                isLast={i === result.chunks.length - 1}
-              />
-            ))}
-          </div>
+          {!isLoading && hasResult && (
+            <div className="scroll-dark" style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '6px',
+              padding: '20px',
+              marginTop: '12px',
+              height: '28vh',
+              overflowY: 'auto',
+            }}>
+              <SectionLabel left="Sources" right={`${chunks.length} results`} />
+              {chunks.map((chunk, i) => (
+                <SourceRow
+                  key={chunk.chunk_id ?? i}
+                  chunk={chunk}
+                  isFirst={i === 0}
+                  isLast={i === chunks.length - 1}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
