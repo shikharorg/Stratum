@@ -1,12 +1,15 @@
+import json
 import time
 import uuid
 
+import redis.asyncio as aioredis
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from stratum_libs.auth import RequestContext
 
+from app.core.config import settings
 from app.db import get_session
 from app.dependencies import get_query_encoder, get_reranker, get_request_context, get_searcher
 from app.pipeline import grounding
@@ -79,6 +82,28 @@ async def retrieve(
         extra_metadata={},
     )
     await session.commit()
+
+    try:
+        redis_client = await aioredis.from_url(settings.REDIS_URL)
+        await redis_client.xadd(
+            "retrieval",
+            {
+                "event_type": "retrieval.completed",
+                "tenant_id": tenant_id,
+                "resource_id": str(log_entry.id),
+                "resource_type": "retrieval_log",
+                "payload": json.dumps({
+                    "query": body.query[:200],
+                    "grounding_passed": grounding_passed,
+                    "latency_ms": latency_ms,
+                    "chunks_count": len(reranked),
+                }),
+                "severity": "info",
+            }
+        )
+        await redis_client.aclose()
+    except Exception:
+        pass
 
     logger.info(
         "retrieval.completed",
