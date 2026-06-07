@@ -52,21 +52,38 @@ async def process_document(
     doc_uuid = uuid_module.UUID(document_id)
     tenant_uuid = uuid_module.UUID(tenant_id)
 
+    async with AsyncSessionFactory() as init_session:
+        await DocumentRepository(init_session).update_status(doc_uuid, tenant_uuid, "processing")
+        await init_session.commit()
+
+    log.info("document.processing.started", document_id=document_id, source_type=source_type)
+
+    download_exc: Exception | None = None
     try:
+        log.info("document.download.started", object_key=object_key)
         file_bytes = await minio_client.download_file(object_key)
+    except Exception as exc:
+        download_exc = exc
+        log.error("document.download.failed", error=str(exc), object_key=object_key)
     finally:
         try:
             await minio_client.delete_file(object_key)
         except Exception:
             log.warning("worker.minio_cleanup_failed", key=object_key)
 
+    if download_exc is not None:
+        async with AsyncSessionFactory() as err_session:
+            await DocumentRepository(err_session).update_status(
+                doc_uuid, tenant_uuid, "failed", str(download_exc)
+            )
+            await err_session.commit()
+        raise download_exc
+
     async with AsyncSessionFactory() as session:
         doc_repo = DocumentRepository(session)
         chunk_repo = ChunkRepository(session)
 
         try:
-            await doc_repo.update_status(doc_uuid, tenant_uuid, "processing")
-
             result = preprocess_document(file_bytes, source_type, filename)
 
             router = DocumentRouter()
@@ -135,7 +152,7 @@ async def process_document(
             await doc_repo.update_status(doc_uuid, tenant_uuid, "completed")
             await session.commit()
 
-            log.info("worker.document_completed", chunk_count=len(chunks))
+            log.info("document.processing.completed", document_id=document_id, chunk_count=len(chunks))
 
             await _publish(
                 ctx["redis"],
@@ -151,7 +168,7 @@ async def process_document(
 
         except Exception as exc:
             await session.rollback()
-            log.exception("worker.document_failed", error=str(exc))
+            log.error("document.processing.failed", document_id=document_id, error=str(exc))
 
             try:
                 async with AsyncSessionFactory() as err_session:
@@ -176,5 +193,6 @@ async def process_document(
 class WorkerSettings:
     functions = [process_document]
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
+    queue_name = "arq:queue:ingestion"
     max_jobs = 10
     job_timeout = 300

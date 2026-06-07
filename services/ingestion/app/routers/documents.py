@@ -101,6 +101,7 @@ async def upload_document(
             source_type=source_type,
             source_url=source_url,
             filename=filename,
+            _queue_name="arq:queue:ingestion",
         )
     except Exception as exc:
         logger.exception("documents.arq_enqueue_failed", document_id=str(document.id))
@@ -181,6 +182,7 @@ async def delete_document(
     session: AsyncSession = Depends(get_session),
     ctx: RequestContext = Depends(get_request_context),
     indexer: QdrantIndexer = Depends(get_indexer),
+    minio_client: MinIOClient = Depends(get_minio_client),
 ) -> Response:
     tenant_uuid = uuid.UUID(ctx.tenant_id)
     doc_repo = DocumentRepository(session)
@@ -197,6 +199,12 @@ async def delete_document(
                 "detail": f"Document {document_id} not found",
             },
         )
+
+    object_key = f"{ctx.tenant_id}/{document_id}/{document.name}"
+    try:
+        await minio_client.delete_file(object_key)
+    except Exception:
+        pass
 
     await indexer.delete_by_document(str(document_id), ctx.tenant_id)
     await chunk_repo.delete_by_document(document_id, tenant_uuid)

@@ -3,7 +3,7 @@ import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
 import apiClient from '../api/client';
 
-const COL = { name: '1fr', type: '90px', status: '110px', chunks: '70px', size: '80px', uploaded: '80px' };
+const COL = { name: '1fr', type: '90px', status: '110px', chunks: '70px', size: '80px', uploaded: '80px', action: '56px' };
 
 function formatSize(bytes) {
   if (bytes == null) return '—';
@@ -79,15 +79,17 @@ function DocStatus({ status }) {
   return null;
 }
 
-function DocRow({ doc, isLast }) {
+function DocRow({ doc, isLast, onDelete, deleting }) {
   const [hovered, setHovered] = useState(false);
+  const [deleteHovered, setDeleteHovered] = useState(false);
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setDeleteHovered(false); }}
       style={{
         display: 'grid',
-        gridTemplateColumns: `${COL.name} ${COL.type} ${COL.status} ${COL.chunks} ${COL.size} ${COL.uploaded}`,
+        gridTemplateColumns: `${COL.name} ${COL.type} ${COL.status} ${COL.chunks} ${COL.size} ${COL.uploaded} ${COL.action}`,
         alignItems: 'center',
         padding: '10px 12px',
         backgroundColor: hovered ? colors.surfaceHover : 'transparent',
@@ -120,6 +122,28 @@ function DocRow({ doc, isLast }) {
       </span>
       <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
         {relativeTime(doc.created_at)}
+      </span>
+      <span style={{ textAlign: 'right' }}>
+        {hovered && (
+          <button
+            disabled={deleting}
+            onClick={e => { e.stopPropagation(); onDelete(doc.id); }}
+            onMouseEnter={() => setDeleteHovered(true)}
+            onMouseLeave={() => setDeleteHovered(false)}
+            style={{
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.xs,
+              color: deleting ? colors.textMuted : deleteHovered ? colors.error : colors.textMuted,
+              background: 'none',
+              border: 'none',
+              padding: '0',
+              cursor: deleting ? 'default' : 'pointer',
+              transition: 'color 0.15s ease',
+            }}
+          >
+            {deleting ? '...' : 'Delete'}
+          </button>
+        )}
       </span>
     </div>
   );
@@ -177,6 +201,7 @@ export default function Knowledge() {
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingIds, setDeletingIds] = useState(new Set());
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
@@ -249,6 +274,18 @@ export default function Knowledge() {
 
   function handleUploadAreaClick() {
     fileInputRef.current?.click();
+  }
+
+  async function handleDelete(docId) {
+    setDeletingIds(prev => new Set(prev).add(docId));
+    try {
+      await apiClient.delete(`/api/v1/ingestion/documents/${docId}`);
+      setDocuments(prev => prev.filter(d => d.id !== docId));
+    } catch {
+      // silently ignore
+    } finally {
+      setDeletingIds(prev => { const s = new Set(prev); s.delete(docId); return s; });
+    }
   }
 
   function handleDragOver(e) {
@@ -325,11 +362,11 @@ export default function Knowledge() {
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `${COL.name} ${COL.type} ${COL.status} ${COL.chunks} ${COL.size} ${COL.uploaded}`,
+            gridTemplateColumns: `${COL.name} ${COL.type} ${COL.status} ${COL.chunks} ${COL.size} ${COL.uploaded} ${COL.action}`,
             padding: '8px 12px',
             borderBottom: `1px solid ${colors.border}`,
           }}>
-            {['Name', 'Type', 'Status', 'Chunks', 'Size', 'Uploaded'].map(h => (
+            {['Name', 'Type', 'Status', 'Chunks', 'Size', 'Uploaded', ''].map(h => (
               <span key={h} style={{
                 fontFamily: typography.fontMono,
                 fontSize: typography.sizes.xs,
@@ -364,7 +401,13 @@ export default function Knowledge() {
             </div>
           ) : (
             documents.map((doc, i) => (
-              <DocRow key={doc.id} doc={doc} isLast={i === documents.length - 1} />
+              <DocRow
+                key={doc.id}
+                doc={doc}
+                isLast={i === documents.length - 1}
+                onDelete={handleDelete}
+                deleting={deletingIds.has(doc.id)}
+              />
             ))
           )}
         </div>
