@@ -1,11 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
-import { mockDocuments } from '../mock/data';
-
-const documents = mockDocuments;
+import apiClient from '../api/client';
 
 const COL = { name: '1fr', type: '90px', status: '110px', chunks: '70px', size: '80px', uploaded: '80px' };
+
+function formatSize(bytes) {
+  if (bytes == null) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function relativeTime(isoString) {
+  const secs = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+function detectSourceType(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  if (ext === 'md') return 'markdown';
+  if (ext === 'pdf') return 'pdf';
+  if (ext === 'json') return 'json';
+  if (ext === 'txt') return 'text';
+  return 'text';
+}
 
 function PulsingDot() {
   const [scale, setScale] = useState(1);
@@ -34,7 +56,7 @@ function DocStatus({ status }) {
       </span>
     );
   }
-  if (status === 'processing') {
+  if (status === 'processing' || status === 'pending') {
     return (
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
         <PulsingDot />
@@ -85,32 +107,37 @@ function DocRow({ doc, isLast }) {
         {doc.name}
       </span>
       <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
-        {doc.sourceType}
+        {doc.source_type}
       </span>
       <span>
         <DocStatus status={doc.status} />
       </span>
       <span style={{ fontFamily: typography.fontMono, fontSize: typography.sizes.sm, color: colors.textSecondary }}>
-        {doc.chunkCount ?? '—'}
+        {doc.chunk_count ?? '—'}
       </span>
       <span style={{ fontFamily: typography.fontMono, fontSize: typography.sizes.sm, color: colors.textSecondary }}>
-        {doc.fileSize}
+        {formatSize(doc.file_size)}
       </span>
       <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
-        {doc.uploadedAt}
+        {relativeTime(doc.created_at)}
       </span>
     </div>
   );
 }
 
-function UploadArea() {
+function UploadArea({ onFile, uploading, uploadError, dragOver, onDragOver, onDragLeave, onDrop }) {
   const [hovered, setHovered] = useState(false);
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onClick={onFile}
       style={{
-        border: `1px dashed ${hovered ? colors.textMuted : colors.border}`,
+        border: `1px dashed ${dragOver || hovered ? colors.textMuted : colors.border}`,
         borderRadius: '6px',
         padding: '24px',
         display: 'flex',
@@ -124,26 +151,120 @@ function UploadArea() {
         marginBottom: '32px',
       }}
     >
-      <span style={{
-        fontFamily: typography.fontUI,
-        fontSize: typography.sizes.base,
-        color: colors.textSecondary,
-      }}>
-        Drop files here or click to upload
-      </span>
-      <span style={{
-        fontFamily: typography.fontUI,
-        fontSize: typography.sizes.xs,
-        color: colors.textMuted,
-      }}>
-        Markdown, PDF, JSON, plain text
-      </span>
+      {uploading ? (
+        <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.base, color: colors.textMuted }}>
+          Uploading...
+        </span>
+      ) : uploadError ? (
+        <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.error }}>
+          {uploadError}
+        </span>
+      ) : (
+        <>
+          <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.base, color: colors.textSecondary }}>
+            Drop files here or click to upload
+          </span>
+          <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.xs, color: colors.textMuted }}>
+            Markdown, PDF, JSON, plain text
+          </span>
+        </>
+      )}
     </div>
   );
 }
 
 export default function Knowledge() {
+  const [documents, setDocuments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
   const [uploadHovered, setUploadHovered] = useState(false);
+  const fileInputRef = useRef(null);
+  const pollRef = useRef(null);
+
+  async function fetchDocuments() {
+    try {
+      const { data } = await apiClient.get('/api/v1/ingestion/documents');
+      setDocuments(data.items ?? []);
+      setError(null);
+      return data.items ?? [];
+    } catch {
+      setError('Failed to load documents.');
+      return [];
+    }
+  }
+
+  function startPolling() {
+    if (pollRef.current) return;
+    pollRef.current = setInterval(async () => {
+      const items = await fetchDocuments();
+      const hasActive = items.some(d => d.status === 'pending' || d.status === 'processing');
+      if (!hasActive) stopPolling();
+    }, 5000);
+  }
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    fetchDocuments().then(items => {
+      setIsLoading(false);
+      const hasActive = items.some(d => d.status === 'pending' || d.status === 'processing');
+      if (hasActive) startPolling();
+    });
+    return () => stopPolling();
+  }, []);
+
+  async function uploadFile(file) {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('source_type', detectSourceType(file.name));
+    try {
+      await apiClient.post('/api/v1/ingestion/documents/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const items = await fetchDocuments();
+      const hasActive = items.some(d => d.status === 'pending' || d.status === 'processing');
+      if (hasActive) startPolling();
+    } catch {
+      setUploadError('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  function handleFileInputChange(e) {
+    uploadFile(e.target.files?.[0]);
+  }
+
+  function handleUploadAreaClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave() {
+    setDragOver(false);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    uploadFile(e.dataTransfer.files?.[0]);
+  }
 
   return (
     <div>
@@ -159,6 +280,7 @@ export default function Knowledge() {
         <button
           onMouseEnter={() => setUploadHovered(true)}
           onMouseLeave={() => setUploadHovered(false)}
+          onClick={handleUploadAreaClick}
           style={{
             fontFamily: typography.fontUI,
             fontSize: typography.sizes.base,
@@ -176,7 +298,23 @@ export default function Knowledge() {
         </button>
       </div>
 
-      <UploadArea />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.pdf,.json,.txt"
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
+
+      <UploadArea
+        onFile={handleUploadAreaClick}
+        uploading={uploading}
+        uploadError={uploadError}
+        dragOver={dragOver}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
 
       <div>
         <SectionHeader>Documents</SectionHeader>
@@ -203,9 +341,32 @@ export default function Knowledge() {
               </span>
             ))}
           </div>
-          {documents.map((doc, i) => (
-            <DocRow key={doc.id} doc={doc} isLast={i === documents.length - 1} />
-          ))}
+
+          {isLoading ? (
+            <div style={{
+              padding: '24px',
+              textAlign: 'center',
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.base,
+              color: colors.textMuted,
+            }}>
+              Loading documents...
+            </div>
+          ) : error ? (
+            <div style={{
+              padding: '24px',
+              textAlign: 'center',
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.sm,
+              color: colors.error,
+            }}>
+              {error}
+            </div>
+          ) : (
+            documents.map((doc, i) => (
+              <DocRow key={doc.id} doc={doc} isLast={i === documents.length - 1} />
+            ))
+          )}
         </div>
       </div>
     </div>
