@@ -1,11 +1,8 @@
-import { ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
 import StatCard from '../components/StatCard';
-import ActivityCard from '../components/ActivityCard';
 import EventList from '../components/EventList';
-import { mockActiveNow, mockNeedsAttention } from '../mock/data';
 import apiClient from '../api/client';
 
 function relativeTime(isoString) {
@@ -52,56 +49,11 @@ function mapAuditLog(item) {
   };
 }
 
-function AttentionCard({ item }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 16px',
-        borderLeft: `4px solid ${colors.warning}`,
-        backgroundColor: hovered ? colors.surfaceHover : colors.surface,
-        border: `1px solid ${colors.border}`,
-        borderLeftWidth: '4px',
-        borderLeftColor: colors.warning,
-        borderRadius: '6px',
-        cursor: 'pointer',
-        transition: 'background-color 0.15s ease',
-      }}
-    >
-      <span style={{
-        fontFamily: typography.fontUI,
-        fontSize: typography.sizes.base,
-        color: colors.text,
-      }}>
-        {item.message}
-      </span>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        fontFamily: typography.fontUI,
-        fontSize: typography.sizes.sm,
-        fontWeight: typography.weights.medium,
-        color: colors.textSecondary,
-        flexShrink: 0,
-        marginLeft: '16px',
-      }}>
-        View
-        <ChevronRight size={14} color={colors.textMuted} />
-      </div>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const [documentCount, setDocumentCount] = useState(null);
   const [documentsToday, setDocumentsToday] = useState(0);
+  const [connectorCount, setConnectorCount] = useState(null);
+  const [runningCount, setRunningCount] = useState(null);
   const [recentEvents, setRecentEvents] = useState([]);
   const pollRef = useRef(null);
 
@@ -110,6 +62,46 @@ export default function Dashboard() {
       const { data } = await apiClient.get('/api/v1/ingestion/documents?page=1&page_size=100');
       setDocumentCount(data.total);
       setDocumentsToday((data.items ?? []).filter(d => isToday(d.created_at)).length);
+    } catch {
+      // keep existing value
+    }
+  }
+
+  async function fetchConnectors() {
+    try {
+      const { data } = await apiClient.get('/api/v1/connectors');
+      setConnectorCount(data.total ?? 0);
+    } catch {
+      // keep existing value
+    }
+  }
+
+  async function fetchActiveRuns() {
+    try {
+      const { data: wfData } = await apiClient.get('/api/v1/workflow/workflows');
+      const workflows = wfData.items ?? [];
+
+      const runResults = await Promise.all(
+        workflows.map(wf =>
+          apiClient
+            .get(`/api/v1/workflow/workflows/${wf.id}/runs`)
+            .then(r => ({ name: wf.name, runs: r.data.items ?? [] }))
+            .catch(() => ({ name: wf.name, runs: [] }))
+        )
+      );
+
+      const oneHourAgo = Date.now() - 3600000;
+      const active = [];
+      runResults.forEach(({ name, runs }) => {
+        runs
+          .filter(r =>
+            (r.status === 'running' || r.status === 'pending') &&
+            new Date(r.created_at).getTime() > oneHourAgo
+          )
+          .forEach(r => active.push({ id: r.id, name: `${name} ${r.status}`, startedAgo: relativeTime(r.created_at) }));
+      });
+
+      setRunningCount(active.length);
     } catch {
       // keep existing value
     }
@@ -126,45 +118,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDocuments();
+    fetchConnectors();
+    fetchActiveRuns();
     fetchAuditLogs();
-    pollRef.current = setInterval(fetchAuditLogs, 15000);
+    pollRef.current = setInterval(() => {
+      fetchAuditLogs();
+      fetchActiveRuns();
+    }, 15000);
     return () => clearInterval(pollRef.current);
   }, []);
 
   const docCount = documentCount === null ? '—' : documentCount.toLocaleString('en-US');
   const docDelta = documentsToday > 0 ? `+${documentsToday} today` : undefined;
+  const connCount = connectorCount === null ? '—' : String(connectorCount);
+  const runCount = runningCount === null ? '—' : String(runningCount);
 
   return (
     <div>
       <div style={{ marginBottom: '28px' }}>
         <SectionHeader>Overview</SectionHeader>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <StatCard
-            value={docCount}
-            label="Documents"
-            delta={docDelta}
-            deltaColor={colors.success}
-          />
-          <StatCard value="3" label="Connectors" delta="all active" deltaColor={colors.textMuted} />
-          <StatCard value="2" label="Running" delta="now" deltaColor={colors.running} />
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '24px' }}>
-        <SectionHeader>Needs attention</SectionHeader>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {mockNeedsAttention.map(item => (
-            <AttentionCard key={item.id} item={item} />
-          ))}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '24px' }}>
-        <SectionHeader>Active now</SectionHeader>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {mockActiveNow.map(item => (
-            <ActivityCard key={item.id} name={item.name} startedAgo={item.startedAgo} />
-          ))}
+          <StatCard value={docCount} label="Documents" delta={docDelta} deltaColor={colors.success} />
+          <StatCard value={connCount} label="Connectors" delta={connectorCount === 0 ? 'none' : connectorCount === 1 ? '1 configured' : `${connCount} configured`} deltaColor={colors.textMuted} />
+          <StatCard value={runCount} label="Running" delta={runningCount === 0 ? 'none active' : 'now'} deltaColor={colors.running} />
         </div>
       </div>
 

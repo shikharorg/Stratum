@@ -225,7 +225,7 @@ export default function Workflows() {
     setRunningIds(prev => new Set(prev).add(workflowId));
     try {
       await apiClient.post(`/api/v1/workflow/workflows/${workflowId}/runs`, {
-        input_data: { query: 'test run' },
+        input_data: { query: 'What are the key topics in our knowledge base?' },
       });
       const { data } = await apiClient.get(`/api/v1/workflow/workflows/${workflowId}/runs`);
       setRunsByWorkflow(prev => ({ ...prev, [workflowId]: data.items ?? [] }));
