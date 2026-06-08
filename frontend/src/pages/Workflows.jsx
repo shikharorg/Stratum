@@ -1,15 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
 import StatusBadge from '../components/StatusBadge';
-import { mockWorkflows, mockWorkflowRuns } from '../mock/data';
-
-const definitions = mockWorkflows;
-const recentRuns = mockWorkflowRuns;
+import apiClient from '../api/client';
 
 const COL = { id: '90px', workflow: '1fr', status: '110px', duration: '80px', started: '90px' };
 
-function WorkflowCard({ wf }) {
+function relativeTime(isoString) {
+  const secs = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+function computeStats(runs) {
+  if (!runs || runs.length === 0) {
+    return { lastRun: 'never', successRate: '—', totalRuns: 0 };
+  }
+  const sorted = [...runs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const lastRun = relativeTime(sorted[0].created_at);
+  const totalRuns = runs.length;
+  const completed = runs.filter(r => r.status === 'completed').length;
+  const failed = runs.filter(r => r.status === 'failed').length;
+  const denom = completed + failed;
+  const successRate = denom === 0 ? '—' : `${Math.round((completed / denom) * 100)}%`;
+  return { lastRun, successRate, totalRuns };
+}
+
+function mapRun(run, workflowName) {
+  return {
+    id: run.id,
+    workflow: workflowName,
+    status: run.status,
+    duration: run.latency_ms != null ? `${(run.latency_ms / 1000).toFixed(1)}s` : '—',
+    startedAt: relativeTime(run.created_at),
+    created_at: run.created_at,
+  };
+}
+
+function WorkflowCard({ wf, onRun, running }) {
   const [hovered, setHovered] = useState(false);
   const [runHovered, setRunHovered] = useState(false);
 
@@ -58,22 +88,24 @@ function WorkflowCard({ wf }) {
           )}
           {wf.status === 'active' && (
             <button
+              disabled={running}
+              onClick={() => onRun(wf.id)}
               onMouseEnter={() => setRunHovered(true)}
               onMouseLeave={() => setRunHovered(false)}
               style={{
                 fontFamily: typography.fontUI,
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.medium,
-                color: runHovered ? colors.text : colors.textSecondary,
-                backgroundColor: runHovered ? colors.surfaceHover : colors.surface,
+                color: running ? colors.textMuted : runHovered ? colors.text : colors.textSecondary,
+                backgroundColor: runHovered && !running ? colors.surfaceHover : colors.surface,
                 border: `1px solid ${colors.border}`,
                 borderRadius: '4px',
                 padding: '4px 10px',
-                cursor: 'pointer',
+                cursor: running ? 'default' : 'pointer',
                 transition: 'color 0.15s ease, background-color 0.15s ease',
               }}
             >
-              Run
+              {running ? '...' : 'Run'}
             </button>
           )}
         </div>
@@ -134,6 +166,92 @@ function RunRow({ run, isLast }) {
 
 export default function Workflows() {
   const [newHovered, setNewHovered] = useState(false);
+  const [workflows, setWorkflows] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [runsByWorkflow, setRunsByWorkflow] = useState({});
+  const [runningIds, setRunningIds] = useState(new Set());
+  const pollRef = useRef(null);
+
+  async function fetchWorkflows() {
+    const { data } = await apiClient.get('/api/v1/workflow/workflows');
+    return data.items ?? [];
+  }
+
+  async function fetchAllRuns(wfList) {
+    const results = await Promise.all(
+      wfList.map(wf =>
+        apiClient
+          .get(`/api/v1/workflow/workflows/${wf.id}/runs`)
+          .then(r => ({ id: wf.id, runs: r.data.items ?? [] }))
+          .catch(() => ({ id: wf.id, runs: [] }))
+      )
+    );
+    const map = {};
+    results.forEach(({ id, runs }) => { map[id] = runs; });
+    return map;
+  }
+
+  async function refreshRuns(wfList) {
+    try {
+      const map = await fetchAllRuns(wfList);
+      setRunsByWorkflow(map);
+    } catch {
+      // silently ignore poll errors
+    }
+  }
+
+  useEffect(() => {
+    let wfList = [];
+    fetchWorkflows()
+      .then(list => {
+        wfList = list;
+        setWorkflows(list);
+        return fetchAllRuns(list);
+      })
+      .then(map => {
+        setRunsByWorkflow(map);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+
+    pollRef.current = setInterval(() => {
+      if (wfList.length > 0) refreshRuns(wfList);
+    }, 10000);
+
+    return () => clearInterval(pollRef.current);
+  }, []);
+
+  async function handleRun(workflowId) {
+    setRunningIds(prev => new Set(prev).add(workflowId));
+    try {
+      await apiClient.post(`/api/v1/workflow/workflows/${workflowId}/runs`, {
+        input_data: { query: 'test run' },
+      });
+      const { data } = await apiClient.get(`/api/v1/workflow/workflows/${workflowId}/runs`);
+      setRunsByWorkflow(prev => ({ ...prev, [workflowId]: data.items ?? [] }));
+    } catch {
+      // silently ignore
+    } finally {
+      setRunningIds(prev => { const s = new Set(prev); s.delete(workflowId); return s; });
+    }
+  }
+
+  const workflowNameMap = Object.fromEntries(workflows.map(w => [w.id, w.name]));
+
+  const enrichedWorkflows = workflows.map(wf => {
+    const runs = runsByWorkflow[wf.id] ?? [];
+    const stats = computeStats(runs);
+    return {
+      ...wf,
+      status: wf.is_active ? 'active' : 'inactive',
+      ...stats,
+    };
+  });
+
+  const allRuns = Object.entries(runsByWorkflow)
+    .flatMap(([wfId, runs]) => runs.map(r => mapRun(r, workflowNameMap[wfId] ?? wfId)))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5);
 
   return (
     <div>
@@ -168,9 +286,22 @@ export default function Workflows() {
 
       <div style={{ marginBottom: '32px' }}>
         <SectionHeader>Definitions</SectionHeader>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {definitions.map(wf => <WorkflowCard key={wf.id} wf={wf} />)}
-        </div>
+        {isLoading ? (
+          <div style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.base, color: colors.textMuted }}>
+            Loading...
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {enrichedWorkflows.map(wf => (
+              <WorkflowCard
+                key={wf.id}
+                wf={wf}
+                onRun={handleRun}
+                running={runningIds.has(wf.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -198,9 +329,20 @@ export default function Workflows() {
               </span>
             ))}
           </div>
-          {recentRuns.map((run, i) => (
-            <RunRow key={run.id} run={run} isLast={i === recentRuns.length - 1} />
-          ))}
+          {allRuns.length === 0 ? (
+            <div style={{
+              padding: '16px 12px',
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.base,
+              color: colors.textMuted,
+            }}>
+              No runs yet
+            </div>
+          ) : (
+            allRuns.map((run, i) => (
+              <RunRow key={run.id} run={run} isLast={i === allRuns.length - 1} />
+            ))
+          )}
         </div>
       </div>
     </div>
