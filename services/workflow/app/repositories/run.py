@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.workflow_run import WorkflowRun
@@ -144,6 +144,25 @@ class WorkflowRunRepository:
             tenant_id=str(tenant_id),
             latency_ms=latency_ms,
         )
+
+    async def cancel_stale(self, older_than_hours: int = 1) -> int:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=older_than_hours)
+        result = await self._session.execute(
+            update(WorkflowRun)
+            .where(
+                and_(
+                    WorkflowRun.status.in_(["pending", "running"]),
+                    WorkflowRun.started_at.is_(None),
+                    WorkflowRun.created_at < cutoff,
+                )
+            )
+            .values(status="cancelled")
+            .execution_options(synchronize_session=False)
+        )
+        count = result.rowcount
+        if count:
+            logger.info("workflow_run.stale_cancelled", count=count, cutoff=cutoff.isoformat())
+        return count
 
     async def update_checkpoint(
         self,

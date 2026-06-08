@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.db import AsyncSessionFactory
+from app.repositories.run import WorkflowRunRepository
 from app.routers.runs import router as runs_router
 from app.routers.workflows import router as workflows_router
 
@@ -18,6 +20,16 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("app.starting", service=settings.SERVICE_NAME, environment=settings.ENVIRONMENT)
     app.state.arq_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+
+    try:
+        async with AsyncSessionFactory() as session:
+            cancelled = await WorkflowRunRepository(session).cancel_stale(older_than_hours=1)
+            await session.commit()
+            if cancelled:
+                logger.info("startup.stale_runs_cancelled", count=cancelled)
+    except Exception:
+        logger.exception("startup.stale_run_reconciliation_failed")
+
     logger.info("app.started", service=settings.SERVICE_NAME)
 
     yield
