@@ -18,7 +18,7 @@ from app.schemas.run import ConnectorRunList, ConnectorRunResponse
 
 logger = structlog.get_logger()
 
-router = APIRouter(prefix="/connectors", tags=["connectors"])
+router = APIRouter(prefix="", tags=["connectors"])
 
 
 @router.post("", response_model=ConnectorResponse, status_code=status.HTTP_201_CREATED)
