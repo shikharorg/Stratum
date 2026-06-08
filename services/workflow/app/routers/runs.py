@@ -59,6 +59,7 @@ async def create_run(
             workflow_id=str(workflow_id),
             input_data=body.input_data,
             _job_id=str(run.id),
+            _queue_name="arq:queue:workflow",
         )
     except Exception as exc:
         logger.exception("runs.enqueue_failed", run_id=str(run.id), tenant_id=ctx.tenant_id)

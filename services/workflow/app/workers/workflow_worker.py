@@ -148,5 +148,6 @@ async def execute_workflow(
 class WorkerSettings:
     functions = [execute_workflow]
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
+    queue_name = "arq:queue:workflow"
     max_jobs: int = 10
     job_timeout: int = 600
