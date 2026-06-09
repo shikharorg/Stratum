@@ -192,6 +192,74 @@ function WorkflowCard({ wf, onRunClick, formOpen, formQuery, onQueryChange, onSu
   );
 }
 
+function RunResultPanel({ result, polling, onDismiss }) {
+  return (
+    <div style={{
+      backgroundColor: colors.surface,
+      border: `1px solid ${colors.border}`,
+      borderRadius: '6px',
+      padding: '16px',
+      marginTop: '4px',
+      position: 'relative',
+    }}>
+      <button
+        onClick={onDismiss}
+        style={{
+          position: 'absolute',
+          top: '10px',
+          right: '12px',
+          fontFamily: typography.fontUI,
+          fontSize: typography.sizes.base,
+          color: colors.textMuted,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          lineHeight: 1,
+          padding: '0 2px',
+        }}
+      >
+        ×
+      </button>
+      <div style={{
+        fontFamily: typography.fontMono,
+        fontSize: '11px',
+        color: colors.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        marginBottom: '8px',
+      }}>
+        Answer
+      </div>
+      {polling ? (
+        <div style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
+          Running...
+        </div>
+      ) : (
+        <>
+          {result?.grounding_passed === false && (
+            <div style={{
+              fontFamily: typography.fontUI,
+              fontSize: '12px',
+              color: colors.warning,
+              marginBottom: '8px',
+            }}>
+              Response could not be fully grounded in retrieved sources.
+            </div>
+          )}
+          <div style={{
+            fontFamily: typography.fontUI,
+            fontSize: typography.sizes.sm,
+            color: colors.text,
+            lineHeight: 1.8,
+          }}>
+            {result?.answer ?? '—'}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function RunRow({ run, isLast }) {
   const [hovered, setHovered] = useState(false);
 
@@ -237,7 +305,11 @@ export default function Workflows() {
   const [activeFormId, setActiveFormId] = useState(null);
   const [formQuery, setFormQuery] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+  const [lastRunResult, setLastRunResult] = useState(null);
+  const [lastRunWorkflowId, setLastRunWorkflowId] = useState(null);
+  const [lastRunPolling, setLastRunPolling] = useState(false);
   const pollRef = useRef(null);
+  const runPollRef = useRef(null);
 
   async function fetchWorkflows() {
     const { data } = await apiClient.get('/api/v1/workflow/workflows');
@@ -285,7 +357,10 @@ export default function Workflows() {
       if (wfList.length > 0) refreshRuns(wfList);
     }, 10000);
 
-    return () => clearInterval(pollRef.current);
+    return () => {
+      clearInterval(pollRef.current);
+      clearTimeout(runPollRef.current);
+    };
   }, []);
 
   function handleRunClick(workflowId) {
@@ -298,12 +373,37 @@ export default function Workflows() {
     if (!formQuery.trim()) return;
     setFormLoading(true);
     try {
-      await apiClient.post(`/api/v1/workflow/workflows/${workflowId}/runs`, {
+      const { data: run } = await apiClient.post(`/api/v1/workflow/workflows/${workflowId}/runs`, {
         input_data: { query: formQuery.trim() },
       });
-      const { data } = await apiClient.get(`/api/v1/workflow/workflows/${workflowId}/runs`);
-      setRunsByWorkflow(prev => ({ ...prev, [workflowId]: data.items ?? [] }));
+      const runId = run.id;
       setActiveFormId(null);
+      setLastRunWorkflowId(workflowId);
+      setLastRunResult(null);
+      setLastRunPolling(true);
+
+      const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
+      function schedulePoll() {
+        clearTimeout(runPollRef.current);
+        runPollRef.current = setTimeout(async () => {
+          try {
+            const { data: runData } = await apiClient.get(
+              `/api/v1/workflow/workflows/${workflowId}/runs/${runId}`
+            );
+            if (TERMINAL.has(runData.status)) {
+              setLastRunResult(runData.output_data);
+              setLastRunPolling(false);
+              const { data: runsData } = await apiClient.get(`/api/v1/workflow/workflows/${workflowId}/runs`);
+              setRunsByWorkflow(prev => ({ ...prev, [workflowId]: runsData.items ?? [] }));
+            } else {
+              schedulePoll();
+            }
+          } catch {
+            setLastRunPolling(false);
+          }
+        }, 2000);
+      }
+      schedulePoll();
     } catch {
       // silently ignore
     } finally {
@@ -368,17 +468,25 @@ export default function Workflows() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {enrichedWorkflows.map(wf => (
-              <WorkflowCard
-                key={wf.id}
-                wf={wf}
-                onRunClick={handleRunClick}
-                formOpen={activeFormId === wf.id}
-                formQuery={activeFormId === wf.id ? formQuery : ''}
-                onQueryChange={setFormQuery}
-                onSubmit={e => handleRunSubmit(e, wf.id)}
-                onCancel={() => setActiveFormId(null)}
-                formLoading={formLoading}
-              />
+              <div key={wf.id}>
+                <WorkflowCard
+                  wf={wf}
+                  onRunClick={handleRunClick}
+                  formOpen={activeFormId === wf.id}
+                  formQuery={activeFormId === wf.id ? formQuery : ''}
+                  onQueryChange={setFormQuery}
+                  onSubmit={e => handleRunSubmit(e, wf.id)}
+                  onCancel={() => setActiveFormId(null)}
+                  formLoading={formLoading}
+                />
+                {lastRunWorkflowId === wf.id && (lastRunPolling || lastRunResult !== null) && (
+                  <RunResultPanel
+                    result={lastRunResult}
+                    polling={lastRunPolling}
+                    onDismiss={() => { clearTimeout(runPollRef.current); setLastRunResult(null); setLastRunWorkflowId(null); setLastRunPolling(false); }}
+                  />
+                )}
+              </div>
             ))}
           </div>
         )}
