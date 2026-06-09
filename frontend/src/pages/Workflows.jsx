@@ -39,7 +39,7 @@ function mapRun(run, workflowName) {
   };
 }
 
-function WorkflowCard({ wf, onRun, running }) {
+function WorkflowCard({ wf, onRunClick, formOpen, formQuery, onQueryChange, onSubmit, onCancel, formLoading }) {
   const [hovered, setHovered] = useState(false);
   const [runHovered, setRunHovered] = useState(false);
 
@@ -88,24 +88,24 @@ function WorkflowCard({ wf, onRun, running }) {
           )}
           {wf.status === 'active' && (
             <button
-              disabled={running}
-              onClick={() => onRun(wf.id)}
+              disabled={formOpen}
+              onClick={() => onRunClick(wf.id)}
               onMouseEnter={() => setRunHovered(true)}
               onMouseLeave={() => setRunHovered(false)}
               style={{
                 fontFamily: typography.fontUI,
                 fontSize: typography.sizes.sm,
                 fontWeight: typography.weights.medium,
-                color: running ? colors.textMuted : runHovered ? colors.text : colors.textSecondary,
-                backgroundColor: runHovered && !running ? colors.surfaceHover : colors.surface,
+                color: formOpen ? colors.textMuted : runHovered ? colors.text : colors.textSecondary,
+                backgroundColor: runHovered && !formOpen ? colors.surfaceHover : colors.surface,
                 border: `1px solid ${colors.border}`,
                 borderRadius: '4px',
                 padding: '4px 10px',
-                cursor: running ? 'default' : 'pointer',
+                cursor: formOpen ? 'default' : 'pointer',
                 transition: 'color 0.15s ease, background-color 0.15s ease',
               }}
             >
-              {running ? '...' : 'Run'}
+              Run
             </button>
           )}
         </div>
@@ -123,6 +123,71 @@ function WorkflowCard({ wf, onRun, running }) {
         <span>·</span>
         <span>{wf.totalRuns} runs total</span>
       </div>
+      {formOpen && (
+        <form
+          onSubmit={onSubmit}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: `1px solid ${colors.borderSubtle}`,
+          }}
+        >
+          <input
+            autoFocus
+            type="text"
+            placeholder="Enter a query..."
+            value={formQuery}
+            onChange={e => onQueryChange(e.target.value)}
+            style={{
+              flex: 1,
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.sm,
+              color: colors.text,
+              backgroundColor: colors.background ?? colors.surfaceHover,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '4px',
+              padding: '5px 10px',
+              outline: 'none',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={formLoading || !formQuery.trim()}
+            style={{
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.sm,
+              color: colors.text,
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '4px',
+              padding: '5px 10px',
+              cursor: formLoading || !formQuery.trim() ? 'default' : 'pointer',
+              opacity: formLoading || !formQuery.trim() ? 0.5 : 1,
+            }}
+          >
+            {formLoading ? '...' : 'Submit'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={formLoading}
+            style={{
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.sm,
+              color: colors.textMuted,
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: '5px 4px',
+              cursor: formLoading ? 'default' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+        </form>
+      )}
     </div>
   );
 }
@@ -169,7 +234,9 @@ export default function Workflows() {
   const [workflows, setWorkflows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [runsByWorkflow, setRunsByWorkflow] = useState({});
-  const [runningIds, setRunningIds] = useState(new Set());
+  const [activeFormId, setActiveFormId] = useState(null);
+  const [formQuery, setFormQuery] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
   const pollRef = useRef(null);
 
   async function fetchWorkflows() {
@@ -221,18 +288,26 @@ export default function Workflows() {
     return () => clearInterval(pollRef.current);
   }, []);
 
-  async function handleRun(workflowId) {
-    setRunningIds(prev => new Set(prev).add(workflowId));
+  function handleRunClick(workflowId) {
+    setActiveFormId(workflowId);
+    setFormQuery('');
+  }
+
+  async function handleRunSubmit(e, workflowId) {
+    e.preventDefault();
+    if (!formQuery.trim()) return;
+    setFormLoading(true);
     try {
       await apiClient.post(`/api/v1/workflow/workflows/${workflowId}/runs`, {
-        input_data: { query: 'What are the key topics in our knowledge base?' },
+        input_data: { query: formQuery.trim() },
       });
       const { data } = await apiClient.get(`/api/v1/workflow/workflows/${workflowId}/runs`);
       setRunsByWorkflow(prev => ({ ...prev, [workflowId]: data.items ?? [] }));
+      setActiveFormId(null);
     } catch {
       // silently ignore
     } finally {
-      setRunningIds(prev => { const s = new Set(prev); s.delete(workflowId); return s; });
+      setFormLoading(false);
     }
   }
 
@@ -296,8 +371,13 @@ export default function Workflows() {
               <WorkflowCard
                 key={wf.id}
                 wf={wf}
-                onRun={handleRun}
-                running={runningIds.has(wf.id)}
+                onRunClick={handleRunClick}
+                formOpen={activeFormId === wf.id}
+                formQuery={activeFormId === wf.id ? formQuery : ''}
+                onQueryChange={setFormQuery}
+                onSubmit={e => handleRunSubmit(e, wf.id)}
+                onCancel={() => setActiveFormId(null)}
+                formLoading={formLoading}
               />
             ))}
           </div>

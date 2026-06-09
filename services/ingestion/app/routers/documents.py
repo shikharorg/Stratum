@@ -206,7 +206,10 @@ async def delete_document(
     except Exception:
         pass
 
-    await indexer.delete_by_document(str(document_id), ctx.tenant_id)
+    try:
+        await indexer.delete_by_document(str(document_id), ctx.tenant_id)
+    except Exception:
+        logger.warning("documents.qdrant_delete_failed", document_id=str(document_id))
     await chunk_repo.delete_by_document(document_id, tenant_uuid)
     await doc_repo.delete_by_id(document_id, tenant_uuid)
     await session.commit()
