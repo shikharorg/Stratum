@@ -75,6 +75,24 @@ class UserService:
             await self._session.rollback()
             raise
 
+    async def deactivate_user(
+        self, user_id: uuid.UUID, context: RequestContext
+    ) -> None:
+        if str(user_id) == context.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot deactivate yourself",
+            )
+        tenant_id = uuid.UUID(context.tenant_id)
+        user_repo = UserRepository(self._session)
+        user = await user_repo.deactivate(user_id, tenant_id)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        await self._session.commit()
+
     async def list_users(
         self, context: RequestContext, page: int, page_size: int
     ) -> UserList:

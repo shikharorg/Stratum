@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { colors, typography } from '../theme';
 import SectionHeader from '../components/SectionHeader';
-import { mockTeamMembers, mockTenant, mockProfile } from '../mock/data';
+import { mockTenant, mockProfile } from '../mock/data';
+import apiClient from '../api/client';
 
 function InlineButton({ children, onClick }) {
   const [hovered, setHovered] = useState(false);
@@ -75,8 +76,45 @@ function Container({ children }) {
   );
 }
 
-function MemberRow({ member, isLast }) {
+const ROLE_LABELS = {
+  tenant_admin: 'Admin',
+  editor: 'Editor',
+  viewer: 'Viewer',
+};
+
+function RoleBadge({ role }) {
+  const label = ROLE_LABELS[role] || role;
+  const isAdmin = role === 'tenant_admin';
+  return (
+    <span style={{
+      fontFamily: typography.fontUI,
+      fontSize: typography.sizes.xs,
+      color: isAdmin ? colors.text : colors.textMuted,
+      backgroundColor: isAdmin ? colors.surface : 'transparent',
+      border: isAdmin ? `1px solid ${colors.border}` : 'none',
+      borderRadius: '3px',
+      padding: isAdmin ? '2px 8px' : '0',
+    }}>
+      {label}
+    </span>
+  );
+}
+
+function MemberRow({ user, isLast, isSelf, onRemove }) {
   const [hovered, setHovered] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  async function handleRemove() {
+    setRemoving(true);
+    try {
+      await apiClient.delete(`/api/v1/identity/users/${user.id}`);
+      onRemove(user.id);
+    } catch {
+      setRemoving(false);
+    }
+  }
+
+  const role = user.roles?.[0];
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -97,44 +135,90 @@ function MemberRow({ member, isLast }) {
           fontSize: typography.sizes.base,
           color: colors.text,
         }}>
-          {member.name}
+          {user.full_name || user.email}
         </div>
-        <div style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.xs,
-          color: colors.textMuted,
-          marginTop: '1px',
-        }}>
-          {member.email}
-        </div>
+        {user.full_name && (
+          <div style={{
+            fontFamily: typography.fontUI,
+            fontSize: typography.sizes.xs,
+            color: colors.textMuted,
+            marginTop: '1px',
+          }}>
+            {user.email}
+          </div>
+        )}
       </div>
-      {member.role === 'Admin' ? (
-        <span style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.xs,
-          color: colors.text,
-          backgroundColor: colors.surface,
-          border: `1px solid ${colors.border}`,
-          borderRadius: '3px',
-          padding: '2px 8px',
-        }}>
-          {member.role}
-        </span>
-      ) : (
-        <span style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.xs,
-          color: colors.textMuted,
-        }}>
-          {member.role}
-        </span>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {role && <RoleBadge role={role} />}
+        {!isSelf && hovered && (
+          <button
+            onClick={handleRemove}
+            disabled={removing}
+            style={{
+              fontFamily: typography.fontUI,
+              fontSize: typography.sizes.xs,
+              color: colors.textMuted,
+              background: 'none',
+              border: 'none',
+              cursor: removing ? 'default' : 'pointer',
+              padding: '0',
+              opacity: removing ? 0.5 : 1,
+            }}
+          >
+            {removing ? 'Removing…' : 'Remove'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function Settings() {
+  const [users, setUsers] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteHovered, setInviteHovered] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('editor');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  useEffect(() => {
+    apiClient.get('/api/v1/identity/users/me').then(({ data }) => {
+      setCurrentUserId(data.id);
+    }).catch(() => {});
+    apiClient.get('/api/v1/identity/users').then(({ data }) => {
+      setUsers(data.items);
+    }).catch(() => {});
+  }, []);
+
+  function handleRemove(userId) {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  }
+
+  async function handleInviteSubmit(e) {
+    e.preventDefault();
+    setInviteError('');
+    setInviteLoading(true);
+    try {
+      await apiClient.post('/api/v1/identity/users', {
+        email: inviteEmail,
+        password: 'changeme123',
+        full_name: inviteEmail,
+        role: inviteRole,
+      });
+      const { data } = await apiClient.get('/api/v1/identity/users');
+      setUsers(data.items);
+      setInviteOpen(false);
+      setInviteEmail('');
+      setInviteRole('editor');
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setInviteError(typeof detail === 'string' ? detail : 'Failed to invite user');
+    } finally {
+      setInviteLoading(false);
+    }
+  }
 
   return (
     <div style={{ maxWidth: '680px' }}>
@@ -163,11 +247,12 @@ export default function Settings() {
               fontSize: typography.sizes.xs,
               color: colors.textMuted,
             }}>
-              {mockTeamMembers.length} members
+              {users.length} members
             </span>
             <button
               onMouseEnter={() => setInviteHovered(true)}
               onMouseLeave={() => setInviteHovered(false)}
+              onClick={() => { setInviteOpen(o => !o); setInviteError(''); }}
               style={{
                 fontFamily: typography.fontUI,
                 fontSize: typography.sizes.xs,
@@ -184,8 +269,96 @@ export default function Settings() {
               + Invite
             </button>
           </div>
-          {mockTeamMembers.map((member, i) => (
-            <MemberRow key={member.id} member={member} isLast={i === mockTeamMembers.length - 1} />
+
+          {inviteOpen && (
+            <form
+              onSubmit={handleInviteSubmit}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                borderBottom: `1px solid ${colors.borderSubtle}`,
+                backgroundColor: colors.surfaceHover,
+                flexWrap: 'wrap',
+              }}
+            >
+              <input
+                type="email"
+                placeholder="email@example.com"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                required
+                style={{
+                  fontFamily: typography.fontUI,
+                  fontSize: typography.sizes.xs,
+                  color: colors.text,
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  outline: 'none',
+                  flex: '1',
+                  minWidth: '160px',
+                }}
+              />
+              <select
+                value={inviteRole}
+                onChange={e => setInviteRole(e.target.value)}
+                style={{
+                  fontFamily: typography.fontUI,
+                  fontSize: typography.sizes.xs,
+                  color: colors.text,
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <option value="editor">Member</option>
+                <option value="tenant_admin">Admin</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <button
+                type="submit"
+                disabled={inviteLoading}
+                style={{
+                  fontFamily: typography.fontUI,
+                  fontSize: typography.sizes.xs,
+                  color: colors.text,
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '4px',
+                  padding: '4px 10px',
+                  cursor: inviteLoading ? 'default' : 'pointer',
+                  opacity: inviteLoading ? 0.6 : 1,
+                }}
+              >
+                {inviteLoading ? 'Inviting…' : 'Submit'}
+              </button>
+              {inviteError && (
+                <span style={{
+                  fontFamily: typography.fontUI,
+                  fontSize: typography.sizes.xs,
+                  color: '#e05b5b',
+                  width: '100%',
+                }}>
+                  {inviteError}
+                </span>
+              )}
+            </form>
+          )}
+
+          {users.map((user, i) => (
+            <MemberRow
+              key={user.id}
+              user={user}
+              isLast={i === users.length - 1}
+              isSelf={user.id === currentUserId}
+              onRemove={handleRemove}
+            />
           ))}
         </Container>
       </div>

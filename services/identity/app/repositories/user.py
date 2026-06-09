@@ -69,3 +69,12 @@ class UserRepository:
             .options(selectinload(User.roles))
         )
         return result.scalar_one_or_none()
+
+    async def deactivate(
+        self, user_id: uuid.UUID, tenant_id: uuid.UUID
+    ) -> User | None:
+        user = await self.get_by_id(user_id, tenant_id)
+        if user:
+            user.is_active = False
+            await self._session.flush()
+        return user

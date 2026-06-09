@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+import uuid
+
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_context, require_role
@@ -36,3 +38,13 @@ async def list_users(
     session: AsyncSession = Depends(get_session),
 ) -> UserList:
     return await UserService(session).list_users(context, page, page_size)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: uuid.UUID,
+    context: RequestContext = Depends(require_role(Role.TENANT_ADMIN)),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    await UserService(session).deactivate_user(user_id, context)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
