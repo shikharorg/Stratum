@@ -30,49 +30,51 @@ function SectionLabel({ left, right }) {
   );
 }
 
-function SourceRow({ chunk, isFirst, isLast }) {
-  const source = chunk.source_url || `doc ${chunk.document_id?.slice(0, 8) ?? ''}`;
-  const preview = chunk.text.replace(/^#+\s+[^\n]+\n+/, '').slice(0, 120);
-
+function SourceRow({ docId, name, sourceType, chunkCount, isFirst, isLast }) {
   return (
     <div style={{
       paddingTop: isFirst ? '0' : '12px',
       paddingBottom: '12px',
       borderBottom: isLast ? 'none' : `1px solid ${colors.borderSubtle}`,
     }}>
-      <div style={{ marginBottom: '2px' }}>
-        <span style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.base,
-          fontWeight: typography.weights.medium,
-          color: colors.text,
-        }}>
-          {source}
-        </span>
-        <span style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.sm,
-          color: colors.textMuted,
-          margin: '0 6px',
-        }}>
-          ·
-        </span>
-        <span style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.sm,
-          color: colors.textMuted,
-        }}>
-          {chunk.source_type}
-        </span>
-      </div>
-      <div style={{
+      <span style={{
+        fontFamily: typography.fontUI,
+        fontSize: typography.sizes.base,
+        fontWeight: typography.weights.medium,
+        color: colors.text,
+      }}>
+        {name}
+      </span>
+      <span style={{
         fontFamily: typography.fontUI,
         fontSize: typography.sizes.sm,
-        color: colors.textSecondary,
-        lineHeight: 1.5,
+        color: colors.textMuted,
+        margin: '0 6px',
       }}>
-        {preview}
-      </div>
+        ·
+      </span>
+      <span style={{
+        fontFamily: typography.fontUI,
+        fontSize: typography.sizes.sm,
+        color: colors.textMuted,
+      }}>
+        {sourceType}
+      </span>
+      <span style={{
+        fontFamily: typography.fontUI,
+        fontSize: typography.sizes.sm,
+        color: colors.textMuted,
+        margin: '0 6px',
+      }}>
+        ·
+      </span>
+      <span style={{
+        fontFamily: typography.fontUI,
+        fontSize: typography.sizes.sm,
+        color: colors.textMuted,
+      }}>
+        {chunkCount} {chunkCount === 1 ? 'chunk' : 'chunks'}
+      </span>
     </div>
   );
 }
@@ -80,6 +82,7 @@ function SourceRow({ chunk, isFirst, isLast }) {
 export default function Search() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState(null);
+  const [docNames, setDocNames] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchHovered, setSearchHovered] = useState(false);
@@ -103,6 +106,16 @@ export default function Search() {
         include_generation: true,
       });
       setResult(response.data);
+      const chunks = response.data?.result?.chunks ?? [];
+      const uniqueIds = [...new Set(chunks.map(c => c.document_id).filter(Boolean))];
+      const entries = await Promise.all(
+        uniqueIds.map(id =>
+          apiClient.get(`/api/v1/ingestion/documents/${id}`)
+            .then(r => [id, r.data.name])
+            .catch(() => [id, `doc ${id.slice(0, 8)}`])
+        )
+      );
+      setDocNames(Object.fromEntries(entries));
     } catch (err) {
       console.error(err);
       console.error(err.response?.data);
@@ -233,15 +246,18 @@ export default function Search() {
                     Response could not be fully grounded in retrieved sources.
                   </div>
                 )}
-                <div style={{
-                  fontFamily: typography.fontUI,
-                  fontSize: typography.sizes.lg,
-                  color: colors.text,
-                  lineHeight: 1.8,
-                  maxWidth: '680px',
-                }}>
-                  {answer}
-                </div>
+                <div
+                  style={{
+                    fontFamily: typography.fontUI,
+                    fontSize: typography.sizes.lg,
+                    color: colors.text,
+                    lineHeight: 1.8,
+                    maxWidth: '680px',
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: answer.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'),
+                  }}
+                />
               </>
             )}
           </div>
@@ -256,15 +272,35 @@ export default function Search() {
               height: '28vh',
               overflowY: 'auto',
             }}>
-              <SectionLabel left="Sources" right={`${chunks.length} results`} />
-              {chunks.map((chunk, i) => (
-                <SourceRow
-                  key={chunk.chunk_id ?? i}
-                  chunk={chunk}
-                  isFirst={i === 0}
-                  isLast={i === chunks.length - 1}
-                />
-              ))}
+              {(() => {
+                const grouped = [];
+                const seen = {};
+                for (const chunk of chunks) {
+                  const id = chunk.document_id;
+                  if (!seen[id]) {
+                    seen[id] = true;
+                    grouped.push({ docId: id, sourceType: chunk.source_type, count: 1 });
+                  } else {
+                    grouped.find(g => g.docId === id).count++;
+                  }
+                }
+                return (
+                  <>
+                    <SectionLabel left="Sources" right={`${grouped.length} documents`} />
+                    {grouped.map((g, i) => (
+                      <SourceRow
+                        key={g.docId}
+                        docId={g.docId}
+                        name={docNames[g.docId] || `doc ${g.docId?.slice(0, 8) ?? ''}`}
+                        sourceType={g.sourceType}
+                        chunkCount={g.count}
+                        isFirst={i === 0}
+                        isLast={i === grouped.length - 1}
+                      />
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
         </>
