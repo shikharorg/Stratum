@@ -229,6 +229,117 @@ services:
       redis:
         condition: service_started
 
+  identity:
+    container_name: stratum-identity
+    build:
+      context: ../
+      dockerfile: services/identity/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=identity"
+    env_file: ../services/identity/.env.docker
+    ports:
+      - "8001:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  connectors:
+    container_name: stratum-connectors
+    build:
+      context: ../
+      dockerfile: services/connectors/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=connectors"
+    env_file: ../services/connectors/.env.docker
+    ports:
+      - "8005:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  connectors-worker:
+    container_name: stratum-connectors-worker
+    build:
+      context: ../
+      dockerfile: services/connectors/Dockerfile
+    restart: unless-stopped
+    command: python -m arq app.workers.sync_worker.WorkerSettings
+    labels:
+      - "project=stratum"
+      - "component=connectors-worker"
+    env_file: ../services/connectors/.env.docker
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  observer:
+    container_name: stratum-observer
+    build:
+      context: ../
+      dockerfile: services/observer/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=observer"
+    env_file: ../services/observer/.env.docker
+    ports:
+      - "8006:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  gateway:
+    container_name: stratum-gateway
+    build:
+      context: ../
+      dockerfile: services/gateway/Dockerfile
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=gateway"
+    env_file: ../services/gateway/.env.docker
+    ports:
+      - "8000:8000"
+    networks:
+      - stratum-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      identity:
+        condition: service_started
+      ingestion:
+        condition: service_started
+      retrieval:
+        condition: service_started
+      workflow:
+        condition: service_started
+      connectors:
+        condition: service_started
+      observer:
+        condition: service_started
+
 networks:
   stratum-network:
     driver: bridge
