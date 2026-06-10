@@ -7,6 +7,7 @@ from app.core.security import validate_jwt
 
 _SKIP_AUTH_PATHS: frozenset[str] = frozenset({
     "/health",
+    "/metrics",
     "/api/v1/identity/auth/register",
     "/api/v1/identity/auth/login",
     "/api/v1/identity/auth/refresh",

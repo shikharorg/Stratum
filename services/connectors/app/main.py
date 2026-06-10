@@ -7,6 +7,8 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.core.config import settings
 from app.routers.connectors import router as connectors_router
 from app.routers.webhooks import router as webhooks_router
@@ -34,6 +36,8 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(connectors_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")

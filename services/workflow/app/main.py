@@ -7,6 +7,8 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.core.config import settings
 from app.db import AsyncSessionFactory
 from app.repositories.run import WorkflowRunRepository
@@ -46,6 +48,8 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(workflows_router, prefix="/api/v1")
 app.include_router(runs_router, prefix="/api/v1")

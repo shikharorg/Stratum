@@ -5,6 +5,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.core.config import settings
 from app.db import engine
 from app.routers.retrieval import router as retrieval_router
@@ -31,6 +33,8 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(retrieval_router, prefix="/api/v1")
 

@@ -9,6 +9,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.consumer import StreamConsumer
 from app.core.config import settings
 from app.routers.audit_logs import router as audit_logs_router
@@ -52,6 +54,8 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(audit_logs_router, prefix="/api/v1")
 app.include_router(stream_router, prefix="/api/v1")

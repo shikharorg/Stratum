@@ -7,6 +7,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.core.config import settings
 from app.db import engine
 from app.routers.auth import router as auth_router
@@ -43,6 +45,8 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")

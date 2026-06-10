@@ -8,6 +8,8 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.core.config import settings
 from app.dependencies import get_encoder, get_indexer, get_minio_client
 from app.routers.documents import router as documents_router
@@ -47,6 +49,8 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.include_router(documents_router, prefix="/api/v1")
 

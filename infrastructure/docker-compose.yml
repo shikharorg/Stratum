@@ -308,6 +308,39 @@ services:
       redis:
         condition: service_started
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: stratum-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - stratum-network
+    restart: unless-stopped
+    labels:
+      - "project=stratum"
+      - "component=prometheus"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: stratum-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=stratum_admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - stratum-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    labels:
+      - "project=stratum"
+      - "component=grafana"
+
   gateway:
     container_name: stratum-gateway
     build:
@@ -350,3 +383,4 @@ volumes:
   qdrant_data:
   pgadmin_data:
   minio_data:
+  grafana_data:

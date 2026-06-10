@@ -25,6 +25,7 @@ dependencies = [
     "arq",
     "python-multipart",
     "miniopy-async",
+    "prometheus-fastapi-instrumentator==7.1.0",
 ]
 
 [tool.hatch.build.targets.wheel]
