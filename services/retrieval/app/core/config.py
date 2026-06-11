@@ -13,6 +13,7 @@ class RetrievalSettings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_GENERATION_MODEL: str = "gpt-4o"
     OPENAI_VALIDATION_MODEL: str = "gpt-4o-mini"
+    EVALUATION_SERVICE_URL: str = "http://localhost:8007"
     ENVIRONMENT: str = "development"
     SERVICE_NAME: str = "retrieval"
 

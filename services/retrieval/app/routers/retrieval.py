@@ -1,7 +1,9 @@
+import asyncio
 import json
 import time
 import uuid
 
+import httpx
 import redis.asyncio as aioredis
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,6 +24,29 @@ from app.schemas.retrieval import ChunkResult, RetrievalRequest, RetrievalRespon
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/retrieve", tags=["retrieval"])
+
+
+async def _trigger_evaluation(
+    query: str,
+    answer: str,
+    contexts: list[str],
+    retrieval_log_id: str,
+    tenant_id: str,
+) -> None:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await client.post(
+                f"{settings.EVALUATION_SERVICE_URL}/api/v1/evaluate",
+                json={
+                    "query": query,
+                    "answer": answer,
+                    "contexts": contexts,
+                    "retrieval_log_id": retrieval_log_id,
+                    "tenant_id": tenant_id,
+                },
+            )
+    except Exception as e:
+        logger.warning("evaluation.trigger_failed", error=str(e))
 
 
 @router.post("", response_model=RetrievalResponse, status_code=status.HTTP_200_OK)
@@ -104,6 +129,18 @@ async def retrieve(
         await redis_client.aclose()
     except Exception:
         pass
+
+    if answer and body.include_generation:
+        task = asyncio.create_task(
+            _trigger_evaluation(
+                query=body.query,
+                answer=answer,
+                contexts=[r.text for r in reranked],
+                retrieval_log_id=str(log_entry.id),
+                tenant_id=tenant_id,
+            )
+        )
+        task.set_name(f"evaluation:{log_entry.id}")
 
     logger.info(
         "retrieval.completed",
