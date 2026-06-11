@@ -7,6 +7,8 @@ class EvaluationSettings(BaseSettings):
     DATABASE_URL: str
     ENVIRONMENT: str = "development"
     SERVICE_NAME: str = "evaluation"
+    OPENAI_API_KEY: str | None = None
+    OPENAI_EVALUATION_MODEL: str = "gpt-4o-mini"
 
 
 settings = EvaluationSettings()

@@ -4,6 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.evaluator import run_evaluation
 from app.db import get_session
 from app.repositories.evaluation import EvaluationRepository
 from app.schemas.evaluation import EvaluateRequest, EvaluateResponse, EvaluationListResponse
@@ -31,19 +32,37 @@ async def evaluate(
         contexts=request.contexts,
         retrieval_log_id=retrieval_log_id,
     )
+    await session.commit()
 
-    record = await repo.update_scores(
-        id=record.id,
-        faithfulness=0.85,
-        answer_relevancy=0.90,
-        context_precision=0.80,
-        overall_score=0.85,
-        status="completed",
+    scores = await run_evaluation(
+        query=request.query,
+        answer=request.answer,
+        contexts=request.contexts,
     )
+
+    if "error" in scores:
+        record = await repo.update_scores(
+            id=record.id,
+            faithfulness=None,
+            answer_relevancy=None,
+            context_precision=None,
+            overall_score=None,
+            status="failed",
+            error_message=scores["error"],
+        )
+    else:
+        record = await repo.update_scores(
+            id=record.id,
+            faithfulness=scores["faithfulness"],
+            answer_relevancy=scores["answer_relevancy"],
+            context_precision=scores["context_precision"],
+            overall_score=scores["overall_score"],
+            status="completed",
+        )
 
     await session.commit()
 
-    logger.info("evaluation.completed", id=str(record.id), status=record.status)
+    logger.info("evaluate.done", id=str(record.id), status=record.status)
 
     return EvaluateResponse(
         id=str(record.id),
