@@ -25,21 +25,19 @@ async def generate_answer(query: str, context_chunks: list[str], strict: bool = 
 
     context = _CONTEXT_SEPARATOR.join(context_chunks)
 
-    if strict:
-        system_prompt = (
-            "You are a precise assistant. Answer the query using ONLY information "
-            "explicitly stated in the provided context. Do not infer, extrapolate, "
-            "or include any information not directly present in the context. "
-            "If the context does not contain sufficient information, say so."
-        )
-    else:
-        system_prompt = (
-            "You are a helpful assistant. Answer the query using only the provided context. "
-            "Be concise and accurate. Cite relevant information from the context."
-        )
+    system_prompt = (
+        "You are a retrieval-augmented assistant. Answer ONLY using the provided context.\n\n"
+        "Rules:\n"
+        "- Never use outside knowledge.\n"
+        "- If the answer is not explicitly supported by the context, say: "
+        "I couldn't find that information in the provided documents.\n"
+        "- Do not infer or speculate.\n"
+        "- Keep answers concise and factual."
+    )
 
     response = await _client.chat.completions.create(
         model=settings.OPENAI_GENERATION_MODEL,
+        temperature=0,
         messages=[
             {"role": "system", "content": system_prompt},
             {
