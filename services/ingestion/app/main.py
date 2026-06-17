@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from prometheus_fastapi_instrumentator import Instrumentator
+import stratum_libs.pfi_compat  # noqa: F401
 
 from app.core.config import settings
 from app.dependencies import get_encoder, get_indexer, get_minio_client

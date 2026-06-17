@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { colors, typography } from '../theme';
 import apiClient from '../api/client';
 
@@ -246,18 +248,27 @@ export default function Search() {
                     Response could not be fully grounded in retrieved sources.
                   </div>
                 )}
-                <div
-                  style={{
-                    fontFamily: typography.fontUI,
-                    fontSize: typography.sizes.lg,
-                    color: colors.text,
-                    lineHeight: 1.8,
-                    maxWidth: '680px',
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: answer.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'),
-                  }}
-                />
+                <div style={{ maxWidth: '680px' }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ children }) => <h1 style={{ fontSize: '16px', fontWeight: '600', color: colors.text, marginBottom: '8px', marginTop: '16px' }}>{children}</h1>,
+                      h2: ({ children }) => <h2 style={{ fontSize: '15px', fontWeight: '600', color: colors.text, marginBottom: '8px', marginTop: '16px' }}>{children}</h2>,
+                      h3: ({ children }) => <h3 style={{ fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '6px', marginTop: '12px' }}>{children}</h3>,
+                      p: ({ children }) => <p style={{ fontSize: '14px', lineHeight: '1.8', color: colors.text, marginBottom: '8px' }}>{children}</p>,
+                      ul: ({ children }) => <ul style={{ paddingLeft: '20px', marginBottom: '8px' }}>{children}</ul>,
+                      ol: ({ children }) => <ol style={{ paddingLeft: '20px', marginBottom: '8px' }}>{children}</ol>,
+                      li: ({ children }) => <li style={{ fontSize: '14px', lineHeight: '1.8', color: colors.text, marginBottom: '4px' }}>{children}</li>,
+                      strong: ({ children }) => <strong style={{ fontWeight: '600', color: colors.text }}>{children}</strong>,
+                      code: ({ children }) => <code style={{ fontFamily: typography.fontMono, fontSize: '13px', backgroundColor: colors.surface, padding: '2px 6px', borderRadius: '3px', color: colors.text }}>{children}</code>,
+                      table: ({ children }) => <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: '12px' }}>{children}</table>,
+                      th: ({ children }) => <th style={{ border: `1px solid ${colors.border}`, padding: '8px', textAlign: 'left', fontWeight: '600', fontSize: '13px', color: colors.text }}>{children}</th>,
+                      td: ({ children }) => <td style={{ border: `1px solid ${colors.border}`, padding: '8px', fontSize: '13px', color: colors.text }}>{children}</td>,
+                    }}
+                  >
+                    {answer}
+                  </ReactMarkdown>
+                </div>
               </>
             )}
           </div>

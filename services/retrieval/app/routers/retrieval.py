@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import time
 import uuid
 
@@ -24,6 +25,25 @@ from app.schemas.retrieval import ChunkResult, RetrievalRequest, RetrievalRespon
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/retrieve", tags=["retrieval"])
+
+_ABBREVIATIONS: dict[str, str] = {
+    r"\bPRs?\b": "pull requests",
+    r"\bAPI\b": "application programming interface",
+    r"\bCI\b": "continuous integration",
+    r"\bCD\b": "continuous deployment",
+    r"\bCICD\b": "continuous integration continuous deployment",
+    r"\bSLA\b": "service level agreement",
+    r"\bSEV\b": "severity",
+    r"\bADR\b": "architecture decision record",
+    r"\bSOX\b": "sarbanes oxley",
+}
+
+
+def _expand_abbreviations(query: str) -> str:
+    expanded = query
+    for pattern, replacement in _ABBREVIATIONS.items():
+        expanded = re.sub(pattern, replacement, expanded, flags=re.IGNORECASE)
+    return expanded
 
 
 async def _trigger_evaluation(
@@ -62,7 +82,9 @@ async def retrieve(
     tenant_id = ctx.tenant_id
 
     dense_vector = encoder.encode_query(body.query)
-    sparse_vector = encoder.encode_sparse(body.query)
+    # Expand abbreviations only for sparse (BM25) encoding so term overlap
+    # matches document vocabulary (e.g. "PR" -> "pull requests").
+    sparse_vector = encoder.encode_sparse(_expand_abbreviations(body.query))
 
     candidates = await searcher.search(
         query_vector=dense_vector,
@@ -79,7 +101,10 @@ async def retrieve(
 
     if body.include_generation and reranked:
         context_chunks = [r.text for r in reranked]
-        answer = await grounding.generate_answer(body.query, context_chunks)
+        labeled_chunks = [
+            f"Source: {r.source_url or r.source_type}\n{r.text}" for r in reranked
+        ]
+        answer = await grounding.generate_answer(body.query, labeled_chunks)
 
         if answer:
             grounding_passed = await grounding.validate(body.query, answer, context_chunks)
@@ -90,7 +115,7 @@ async def retrieve(
                     tenant_id=tenant_id,
                     query=body.query[:100],
                 )
-                answer = await grounding.generate_answer(body.query, context_chunks, strict=True)
+                answer = await grounding.generate_answer(body.query, labeled_chunks, strict=True)
                 grounding_passed = await grounding.validate(body.query, answer, context_chunks)
 
     latency_ms = int((time.monotonic() - start) * 1000)

@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 
 from prometheus_fastapi_instrumentator import Instrumentator
+import stratum_libs.pfi_compat  # noqa: F401
 
 from app.consumer import StreamConsumer
 from app.core.config import settings

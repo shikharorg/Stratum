@@ -2,9 +2,6 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: gateway
-    static_configs:
-      - targets: ['stratum-gateway:8000']
   - job_name: identity
     static_configs:
       - targets: ['stratum-identity:8000']

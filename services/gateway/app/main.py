@@ -10,8 +10,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from prometheus_fastapi_instrumentator import Instrumentator
-
 from app.core.config import settings
 from app.core.rate_limit import init_redis
 from app.middleware.auth import AuthMiddleware
@@ -56,8 +54,6 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
-
-Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(AuthMiddleware)
 app.add_middleware(ContextMiddleware)

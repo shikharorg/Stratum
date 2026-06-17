@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from prometheus_fastapi_instrumentator import Instrumentator
+import stratum_libs.pfi_compat  # noqa: F401
 
 from app.core.config import settings
 from app.routers.connectors import router as connectors_router

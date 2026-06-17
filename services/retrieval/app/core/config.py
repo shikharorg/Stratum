@@ -12,6 +12,7 @@ class RetrievalSettings(BaseSettings):
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     OPENAI_API_KEY: str | None = None
     OPENAI_GENERATION_MODEL: str = "gpt-4o"
+    OPENAI_GENERATION_MAX_TOKENS: int = 700
     OPENAI_VALIDATION_MODEL: str = "gpt-4o-mini"
     EVALUATION_SERVICE_URL: str = "http://localhost:8007"
     ENVIRONMENT: str = "development"

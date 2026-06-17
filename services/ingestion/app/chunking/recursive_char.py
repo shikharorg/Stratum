@@ -8,8 +8,8 @@ _SEPARATORS = [r"\n\n+", r"(?<=[.!?])\s+", r"\s+"]
 class RecursiveCharChunker(BaseChunker):
     def __init__(
         self,
-        chunk_size_chars: int = 2048,
-        chunk_overlap_chars: int = 200,
+        chunk_size_chars: int = 3200,
+        chunk_overlap_chars: int = 600,
     ) -> None:
         self.chunk_size_chars = chunk_size_chars
         self.chunk_overlap_chars = chunk_overlap_chars

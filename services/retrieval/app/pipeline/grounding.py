@@ -26,18 +26,27 @@ async def generate_answer(query: str, context_chunks: list[str], strict: bool = 
     context = _CONTEXT_SEPARATOR.join(context_chunks)
 
     system_prompt = (
-        "You are a retrieval-augmented assistant. Answer ONLY using the provided context.\n\n"
-        "Rules:\n"
-        "- Never use outside knowledge.\n"
-        "- If the answer is not explicitly supported by the context, say: "
-        "I couldn't find that information in the provided documents.\n"
-        "- Do not infer or speculate.\n"
-        "- Keep answers concise and factual."
+        "You are an enterprise AI assistant. Answer ONLY using the provided context.\n\n"
+        "Formatting rules:\n"
+        "- Always respond in Markdown format.\n"
+        "- Use ## headings for major sections.\n"
+        "- Use numbered lists for sequential steps or processes.\n"
+        "- Use bullet points for recommendations or non-sequential items.\n"
+        "- Bold important terms using **term**.\n"
+        "- Use tables for comparisons when appropriate.\n"
+        "- Never write one long paragraph when the answer contains multiple steps or items.\n"
+        "- When the context contains procedures, policies, or numbered steps, present them "
+        "faithfully. You may paraphrase for clarity, but do not omit or invent information.\n"
+        "- Keep answers concise and factual.\n"
+        "- Only respond with 'I couldn't find that information in the provided documents.' "
+        "when the retrieved context genuinely does not contain the information needed to "
+        "answer the question. If the answer is present, answer normally."
     )
 
     response = await _client.chat.completions.create(
         model=settings.OPENAI_GENERATION_MODEL,
         temperature=0,
+        max_tokens=settings.OPENAI_GENERATION_MAX_TOKENS,
         messages=[
             {"role": "system", "content": system_prompt},
             {
