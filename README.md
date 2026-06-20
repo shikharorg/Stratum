@@ -1,12 +1,12 @@
 # Stratum
 
-Stratum is a platform for running AI on top of your organization's documents and data. You connect your sources (files, Slack, Jira, GitHub), and Stratum handles ingestion, search, and answer generation — with every response validated against the source material before it reaches the user.
-
-Each tenant's data is fully isolated. All search results are scored automatically using RAGAS so quality regressions are visible before they become user problems.
+Stratum is a multi-tenant AI knowledge platform that lets teams search across internal documentation and connected tools such as Slack, GitHub, and Jira using natural language. It ingests content, indexes it for hybrid retrieval, generates grounded answers, and continuously evaluates retrieval quality using RAGAS so retrieval regressions can be detected before they affect users.
 
 ---
 
 ## Screenshots
+
+
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" width="49%" />
@@ -23,7 +23,20 @@ Each tenant's data is fully isolated. All search results are scored automaticall
 
 ---
 
-## Features
+## Benchmarks
+
+Evaluated on 30 benchmark queries across five internal documents.
+
+```
+Overall RAGAS .......... 0.88
+Faithfulness ........... 1.00
+Answer Relevancy ....... 0.83
+Context Precision ...... 1.00
+```
+
+---
+
+## Highlights
 
 - Upload documents (PDF, DOCX, code) or connect Slack, Jira, and GitHub — ingestion runs in the background
 - Hybrid search combining dense vector similarity and BM25 keyword matching, fused with RRF
@@ -38,9 +51,19 @@ Each tenant's data is fully isolated. All search results are scored automaticall
 
 ---
 
+## Use Cases
+
+- Search internal engineering documentation
+- Ask questions across company knowledge bases
+- Build AI workflows on top of enterprise documents
+- Connect Slack, GitHub, and Jira as knowledge sources
+- Monitor retrieval quality with continuous RAGAS evaluation
+
+---
+
 ## Architecture
 
-Eight FastAPI services communicate through the gateway (synchronous HTTP) or Redis Streams (async events). No service imports another's code — the gateway is the only internet-facing entry point.
+Stratum follows a service-oriented architecture. The API gateway is the only public entry point; internal services communicate over HTTP for synchronous requests and Redis Streams for asynchronous events. Each service owns its data and can be scaled independently.
 
 ```
                           ┌─────────────────────────────────────────┐
