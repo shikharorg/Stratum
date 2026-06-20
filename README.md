@@ -9,6 +9,9 @@ Stratum is a multi-tenant AI knowledge platform that lets teams search across in
 
 
 <p align="center">
+  <img src="docs/screenshots/grafana.png" width="100%" />
+</p>
+<p align="center">
   <img src="docs/screenshots/dashboard.png" width="49%" />
   <img src="docs/screenshots/search_page.png" width="49%" />
 </p>
@@ -28,10 +31,10 @@ Stratum is a multi-tenant AI knowledge platform that lets teams search across in
 Evaluated on 30 benchmark queries across five internal documents.
 
 ```
-Overall RAGAS .......... 0.88
-Faithfulness ........... 1.00
-Answer Relevancy ....... 0.83
-Context Precision ...... 1.00
+Overall RAGAS .......... 0.92
+Faithfulness ........... 0.97
+Answer Relevancy ....... 0.90
+Context Precision ...... 0.94
 ```
 
 ---
