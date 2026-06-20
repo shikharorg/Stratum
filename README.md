@@ -9,9 +9,6 @@ Stratum is a multi-tenant AI knowledge platform that lets teams search across in
 
 
 <p align="center">
-  <img src="docs/screenshots/grafana.png" width="100%" />
-</p>
-<p align="center">
   <img src="docs/screenshots/dashboard.png" width="49%" />
   <img src="docs/screenshots/search_page.png" width="49%" />
 </p>
@@ -22,6 +19,9 @@ Stratum is a multi-tenant AI knowledge platform that lets teams search across in
 <p align="center">
   <img src="docs/screenshots/integrations_page.png" width="49%" />
   <img src="docs/screenshots/settings_page.png" width="49%" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/grafana.png" width="100%" />
 </p>
 
 ---
@@ -162,10 +162,10 @@ Async: trigger RAGAS evaluation (fire-and-forget)
 
 | Metric | Score |
 |---|---|
-| Faithfulness | 1.00 |
-| Answer Relevancy | 0.83 |
-| Context Precision | 1.00 |
-| Overall | 0.88 |
+| Faithfulness | 0.97 |
+| Answer Relevancy | 0.90 |
+| Context Precision | 0.94 |
+| Overall | 0.92 |
 
 ---
 
