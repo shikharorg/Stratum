@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.rate_limit import init_redis
 from app.middleware.auth import AuthMiddleware
 from app.middleware.context import ContextMiddleware
+from app.routers.dashboard import router as dashboard_router
 from app.routers.proxy import router as proxy_router
 
 structlog.configure(
@@ -71,4 +72,5 @@ async def health() -> JSONResponse:
     return JSONResponse({"status": "healthy"})
 
 
+app.include_router(dashboard_router)
 app.include_router(proxy_router)

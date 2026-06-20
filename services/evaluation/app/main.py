@@ -10,6 +10,7 @@ import stratum_libs.pfi_compat  # noqa: F401
 from app.core.config import settings
 from app.db import engine
 from app.routers.evaluation import router as evaluation_router
+from app.routers.quality import router as quality_router
 
 logger = structlog.get_logger()
 
@@ -37,6 +38,7 @@ app = FastAPI(
 Instrumentator().instrument(app).expose(app)
 
 app.include_router(evaluation_router, prefix="/api/v1")
+app.include_router(quality_router, prefix="/api/v1")
 
 
 @app.get("/health", include_in_schema=False)

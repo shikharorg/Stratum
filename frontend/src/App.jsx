@@ -17,12 +17,14 @@ function AppLayout() {
       fontFamily: typography.fontUI,
       color: colors.text,
       minHeight: '100vh',
-      backgroundColor: colors.bg,
+      backgroundColor: '#ffffff',
     }}>
       <Sidebar />
       <main style={{
         marginLeft: '220px',
         padding: '28px 48px',
+        minHeight: '100vh',
+        backgroundColor: '#ffffff',
       }}>
         <div style={{ maxWidth: '900px' }}>
           <Routes>

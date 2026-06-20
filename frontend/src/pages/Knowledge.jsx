@@ -29,52 +29,27 @@ function detectSourceType(filename) {
   return 'text';
 }
 
-function PulsingDot() {
-  const [scale, setScale] = useState(1);
-  useEffect(() => {
-    const interval = setInterval(() => setScale(s => s === 1 ? 1.6 : 1), 900);
-    return () => clearInterval(interval);
-  }, []);
-  return (
-    <div style={{
-      width: '6px',
-      height: '6px',
-      borderRadius: '50%',
-      backgroundColor: colors.running,
-      flexShrink: 0,
-      transform: `scale(${scale})`,
-      transition: 'transform 0.4s ease',
-    }} />
-  );
-}
-
 function DocStatus({ status }) {
+  const pillStyle = (bg, color) => ({
+    display: 'inline-block',
+    backgroundColor: bg,
+    color,
+    fontFamily: typography.fontUI,
+    fontSize: '12px',
+    fontWeight: 500,
+    padding: '2px 8px',
+    borderRadius: '999px',
+    whiteSpace: 'nowrap',
+  });
+
   if (status === 'completed') {
-    return (
-      <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
-        Indexed
-      </span>
-    );
+    return <span style={pillStyle('#f3f2f0', '#5f5e5a')}>Indexed</span>;
   }
   if (status === 'processing' || status === 'pending') {
-    return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-        <PulsingDot />
-        <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.text }}>
-          Processing
-        </span>
-      </div>
-    );
+    return <span style={pillStyle('#e8f0fb', '#185FA5')}>Processing</span>;
   }
   if (status === 'failed') {
-    return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: colors.error, flexShrink: 0 }} />
-        <span style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.error }}>
-          Failed
-        </span>
-      </div>
-    );
+    return <span style={pillStyle('#fceaea', '#a32d2d')}>Failed</span>;
   }
   return null;
 }
@@ -312,7 +287,7 @@ export default function Knowledge() {
           fontWeight: typography.weights.semibold,
           color: colors.text,
         }}>
-          Knowledge
+          Docs
         </div>
         <button
           onMouseEnter={() => setUploadHovered(true)}

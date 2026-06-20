@@ -1,72 +1,27 @@
-import { useState, useEffect } from 'react';
-import { colors, typography } from '../theme';
+import { typography } from '../theme';
 
-const DOT_COLOR = {
-  completed: colors.success,
-  failed: colors.error,
-  running: colors.running,
-  pending: colors.textMuted,
+const PILL = {
+  completed: { bg: '#eef4e8', color: '#3b6d11', label: 'Completed' },
+  failed:    { bg: '#fceaea', color: '#a32d2d', label: 'Failed' },
+  running:   { bg: '#e8f0fb', color: '#185FA5', label: 'Running' },
+  pending:   { bg: '#f3f2f0', color: '#5f5e5a', label: 'Pending' },
 };
-
-const LABEL = {
-  completed: 'Completed',
-  failed: 'Failed',
-  running: 'Running',
-  pending: 'Pending',
-};
-
-function PulsingDot({ color }) {
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setScale(s => s === 1 ? 1.6 : 1);
-    }, 900);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div style={{
-      width: '6px',
-      height: '6px',
-      borderRadius: '50%',
-      backgroundColor: color,
-      flexShrink: 0,
-      transform: `scale(${scale})`,
-      transition: 'transform 0.4s ease',
-    }} />
-  );
-}
 
 export default function StatusBadge({ status }) {
-  const dotColor = DOT_COLOR[status] ?? colors.textMuted;
-  const label = LABEL[status] ?? status;
-  const textColor = status === 'failed' ? colors.error : colors.textSecondary;
-
+  const pill = PILL[status] ?? PILL.pending;
   return (
-    <div style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '6px',
+    <span style={{
+      display: 'inline-block',
+      backgroundColor: pill.bg,
+      color: pill.color,
+      fontFamily: typography.fontUI,
+      fontSize: '12px',
+      fontWeight: 500,
+      padding: '2px 8px',
+      borderRadius: '999px',
+      whiteSpace: 'nowrap',
     }}>
-      {status === 'running' ? (
-        <PulsingDot color={dotColor} />
-      ) : (
-        <div style={{
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          backgroundColor: dotColor,
-          flexShrink: 0,
-        }} />
-      )}
-      <span style={{
-        fontFamily: typography.fontUI,
-        fontSize: typography.sizes.sm,
-        color: textColor,
-      }}>
-        {label}
-      </span>
-    </div>
+      {pill.label}
+    </span>
   );
 }

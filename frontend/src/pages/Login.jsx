@@ -48,23 +48,6 @@ export default function Login() {
     }}>
       <div style={{ width: '100%', maxWidth: '360px', padding: '0 24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '40px' }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: colors.border,
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '10px',
-          }}>
-            <div style={{
-              width: '10px',
-              height: '10px',
-              backgroundColor: colors.accent,
-              borderRadius: '2px',
-            }} />
-          </div>
           <span style={{
             fontFamily: typography.fontMono,
             fontSize: typography.sizes.lg,

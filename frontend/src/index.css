@@ -1,7 +1,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0C0C0C; }
+body { background: #f3f2f0; }
 
 .scroll-dark::-webkit-scrollbar { width: 4px; }
 .scroll-dark::-webkit-scrollbar-track { background: transparent; }
-.scroll-dark::-webkit-scrollbar-thumb { background: #333333; border-radius: 2px; }
-.scroll-dark::-webkit-scrollbar-thumb:hover { background: #555555; }
+.scroll-dark::-webkit-scrollbar-thumb { background: #d0cfc9; border-radius: 2px; }
+.scroll-dark::-webkit-scrollbar-thumb:hover { background: #b0afab; }

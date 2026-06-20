@@ -2,17 +2,12 @@ import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { colors, typography } from '../theme';
 
-function dotColorFor(status) {
-  return status === 'error' ? colors.error : colors.textMuted;
-}
-
 function textColorFor(status) {
   return status === 'error' ? colors.error : colors.text;
 }
 
 function EventRow({ event, isLast }) {
   const [hovered, setHovered] = useState(false);
-  const dotColor = dotColorFor(event.status);
   const textColor = textColorFor(event.status);
 
   return (
@@ -29,13 +24,6 @@ function EventRow({ event, isLast }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-        <div style={{
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          backgroundColor: dotColor,
-          flexShrink: 0,
-        }} />
         <span style={{
           fontFamily: typography.fontUI,
           fontSize: typography.sizes.base,

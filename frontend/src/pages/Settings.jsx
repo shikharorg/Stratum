@@ -342,7 +342,7 @@ export default function Settings() {
                 <span style={{
                   fontFamily: typography.fontUI,
                   fontSize: typography.sizes.xs,
-                  color: '#e05b5b',
+                  color: colors.error,
                   width: '100%',
                 }}>
                   {inviteError}

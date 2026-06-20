@@ -11,6 +11,7 @@ import stratum_libs.pfi_compat  # noqa: F401
 from app.core.config import settings
 from app.db import engine
 from app.routers.retrieval import router as retrieval_router
+from app.routers.stats import router as stats_router
 
 logger = structlog.get_logger()
 
@@ -38,6 +39,7 @@ app = FastAPI(
 Instrumentator().instrument(app).expose(app)
 
 app.include_router(retrieval_router, prefix="/api/v1")
+app.include_router(stats_router, prefix="/api/v1")
 
 
 @app.get("/health", include_in_schema=False)

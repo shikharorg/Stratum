@@ -1,29 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { colors, typography } from '../theme';
-
-function PulsingDot() {
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setScale(s => s === 1 ? 1.6 : 1);
-    }, 900);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div style={{
-      width: '8px',
-      height: '8px',
-      borderRadius: '50%',
-      backgroundColor: colors.running,
-      flexShrink: 0,
-      transform: `scale(${scale})`,
-      transition: 'transform 0.4s ease',
-    }} />
-  );
-}
 
 export default function ActivityCard({ name, startedAgo }) {
   const [hovered, setHovered] = useState(false);
@@ -45,7 +22,19 @@ export default function ActivityCard({ name, startedAgo }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <PulsingDot />
+        <span style={{
+          display: 'inline-block',
+          backgroundColor: '#e8f0fb',
+          color: '#185FA5',
+          fontFamily: typography.fontUI,
+          fontSize: '12px',
+          fontWeight: 500,
+          padding: '2px 8px',
+          borderRadius: '999px',
+          whiteSpace: 'nowrap',
+        }}>
+          Running
+        </span>
         <div>
           <div style={{
             fontFamily: typography.fontUI,

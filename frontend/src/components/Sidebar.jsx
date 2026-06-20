@@ -13,7 +13,7 @@ import { logout } from '../api/auth';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/knowledge', icon: BookOpen, label: 'Knowledge' },
+  { to: '/knowledge', icon: BookOpen, label: 'Docs' },
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/integrations', icon: Plug, label: 'Integrations' },
@@ -37,9 +37,10 @@ function NavItem({ to, icon: Icon, label }) {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        padding: '7px 16px',
-        borderLeft: isActive ? `2px solid ${colors.accent}` : '2px solid transparent',
-        backgroundColor: isActive ? colors.accentMuted : hovered ? colors.surfaceHover : 'transparent',
+        margin: '1px 8px',
+        padding: '7px 10px',
+        borderRadius: '6px',
+        backgroundColor: isActive ? '#f3f2f0' : hovered ? '#f3f2f0' : 'transparent',
         transition: 'background-color 0.15s ease',
         cursor: 'pointer',
       }}>
@@ -49,8 +50,8 @@ function NavItem({ to, icon: Icon, label }) {
         />
         <span style={{
           fontFamily: typography.fontUI,
-          fontSize: typography.sizes.base,
-          fontWeight: isActive ? typography.weights.medium : typography.weights.regular,
+          fontSize: '13px',
+          fontWeight: isActive ? typography.weights.medium : 500,
           color: isActive ? colors.text : hovered ? colors.text : colors.textSecondary,
           transition: 'color 0.15s ease',
         }}>
@@ -78,50 +79,23 @@ export default function Sidebar() {
       width: '220px',
       height: '100vh',
       backgroundColor: colors.surface,
-      borderRight: `1px solid ${colors.border}`,
+      borderRight: '1px solid #e2e1de',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 100,
     }}>
       <div style={{
-        padding: '20px 16px 16px',
-        borderBottom: `1px solid ${colors.border}`,
+        padding: '20px 16px 18px',
+        borderBottom: '1px solid #e2e1de',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: colors.border,
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <div style={{
-              width: '10px',
-              height: '10px',
-              backgroundColor: colors.accent,
-              borderRadius: '2px',
-            }} />
-          </div>
-          <span style={{
-            fontFamily: typography.fontMono,
-            fontSize: typography.sizes.base,
-            fontWeight: typography.weights.medium,
-            color: colors.text,
-          }}>
-            Stratum
-          </span>
-        </div>
-        <div style={{
-          fontFamily: typography.fontUI,
-          fontSize: typography.sizes.xs,
-          color: colors.textMuted,
-          paddingLeft: '34px',
+        <span style={{
+          fontFamily: typography.fontMono,
+          fontSize: typography.sizes.base,
+          fontWeight: typography.weights.medium,
+          color: colors.text,
         }}>
-          stratum-test
-        </div>
+          Stratum
+        </span>
       </div>
 
       <nav style={{ flex: 1, paddingTop: '8px' }}>
@@ -132,7 +106,7 @@ export default function Sidebar() {
 
       <div style={{
         padding: '16px',
-        borderTop: `1px solid ${colors.border}`,
+        borderTop: '1px solid #e2e1de',
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
@@ -142,7 +116,7 @@ export default function Sidebar() {
           height: '28px',
           borderRadius: '50%',
           backgroundColor: colors.accentMuted,
-          border: `1px solid ${colors.border}`,
+          border: '1px solid #e2e1de',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -157,25 +131,12 @@ export default function Sidebar() {
             A
           </span>
         </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{
-            fontFamily: typography.fontUI,
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.medium,
-            color: colors.text,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            admin@test.com
-          </div>
-          <div style={{
-            fontFamily: typography.fontUI,
-            fontSize: typography.sizes.xs,
-            color: colors.textMuted,
-          }}>
-            Admin
-          </div>
+        <div style={{
+          fontFamily: typography.fontUI,
+          fontSize: typography.sizes.xs,
+          color: colors.textMuted,
+        }}>
+          Admin
         </div>
       </div>
 
@@ -184,11 +145,11 @@ export default function Sidebar() {
         onMouseLeave={() => setSignOutHovered(false)}
         onClick={handleSignOut}
         style={{
-          borderTop: `1px solid ${colors.borderSubtle}`,
-          padding: '12px 16px',
+          borderTop: '1px solid #e2e1de',
+          padding: '10px 16px',
           fontFamily: typography.fontUI,
-          fontSize: typography.sizes.sm,
-          color: signOutHovered ? colors.text : colors.textMuted,
+          fontSize: '11px',
+          color: signOutHovered ? '#999' : '#bbb',
           cursor: 'pointer',
           transition: 'color 0.15s ease',
         }}

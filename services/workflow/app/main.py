@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.db import AsyncSessionFactory
 from app.repositories.run import WorkflowRunRepository
 from app.routers.runs import router as runs_router
+from app.routers.stats import router as stats_router
 from app.routers.workflows import router as workflows_router
 
 logger = structlog.get_logger()
@@ -54,6 +55,7 @@ Instrumentator().instrument(app).expose(app)
 
 app.include_router(workflows_router, prefix="/api/v1")
 app.include_router(runs_router, prefix="/api/v1")
+app.include_router(stats_router, prefix="/api/v1")
 
 
 @app.get("/health", include_in_schema=False)

@@ -20,6 +20,17 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="", tags=["connectors"])
 
+_SUPPORTED_TYPES = [
+    {"id": "slack",  "label": "Slack"},
+    {"id": "github", "label": "GitHub"},
+    {"id": "jira",   "label": "Jira"},
+]
+
+
+@router.get("/types")
+async def list_connector_types() -> JSONResponse:
+    return JSONResponse({"types": _SUPPORTED_TYPES})
+
 
 @router.post("", response_model=ConnectorResponse, status_code=status.HTTP_201_CREATED)
 async def create_connector(
