@@ -16,17 +16,17 @@ Stratum ingests content, indexes it for hybrid retrieval, generates answers vali
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
-| Search — grounded answer with cited sources | Grafana — quality tracked over time |
+| Search — grounded answer with cited sources | Settings — workspace, roles, and API keys |
 |---|---|
-| ![Search](docs/screenshots/search_page.png) | ![Grafana](docs/screenshots/grafana.png) |
+| ![Search](docs/screenshots/search_page.png) | ![Settings](docs/screenshots/settings_page.png) |
 
 | Workflows — checkpointed runs | Docs — indexed sources with chunk counts |
 |---|---|
 | ![Workflows](docs/screenshots/workflow_page.png) | ![Docs](docs/screenshots/docs_page.png) |
 
-**Settings — workspace, roles, and API keys**
+**Grafana — quality tracked over time**
 
-![Settings](docs/screenshots/settings_page.png)
+![Grafana](docs/screenshots/grafana.png)
 
 ---
 
