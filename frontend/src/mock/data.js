@@ -76,7 +76,7 @@ export const mockTeamMembers = [
 export const mockTenant = {
   name: 'Stratum Test',
   slug: 'stratum-test',
-  apiKeyPreview: 'sk_live_',
+  apiKeyPreview: 'sk_test_',
 };
 
 export const mockProfile = {

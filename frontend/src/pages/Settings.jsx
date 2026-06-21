@@ -370,7 +370,7 @@ export default function Settings() {
             <FieldText>{mockTenant.name}</FieldText>
           </FieldRow>
           <FieldRow label="Workspace URL">
-            <FieldText mono>app.stratum.ai/{mockTenant.slug}</FieldText>
+            <FieldText mono>localhost:5173/{mockTenant.slug}</FieldText>
           </FieldRow>
           <FieldRow label="API Key" isLast>
             <FieldText mono>{mockTenant.apiKeyPreview}****************</FieldText>

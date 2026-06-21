@@ -37,13 +37,13 @@ class WorkflowRepository:
         count_result = await self._session.execute(
             select(func.count())
             .select_from(Workflow)
-            .where(Workflow.tenant_id == tenant_id, Workflow.is_active == True)  # noqa: E712
+            .where(Workflow.tenant_id == tenant_id)
         )
         total = count_result.scalar_one()
 
         rows_result = await self._session.execute(
             select(Workflow)
-            .where(Workflow.tenant_id == tenant_id, Workflow.is_active == True)  # noqa: E712
+            .where(Workflow.tenant_id == tenant_id)
             .offset(skip)
             .limit(limit)
         )

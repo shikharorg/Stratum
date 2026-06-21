@@ -312,7 +312,7 @@ export default function Workflows() {
   const runPollRef = useRef(null);
 
   async function fetchWorkflows() {
-    const { data } = await apiClient.get('/api/v1/workflow/workflows');
+    const { data } = await apiClient.get('/api/v1/workflow/workflows?page_size=100');
     return data.items ?? [];
   }
 
@@ -320,7 +320,7 @@ export default function Workflows() {
     const results = await Promise.all(
       wfList.map(wf =>
         apiClient
-          .get(`/api/v1/workflow/workflows/${wf.id}/runs`)
+          .get(`/api/v1/workflow/workflows/${wf.id}/runs?page_size=100`)
           .then(r => ({ id: wf.id, runs: r.data.items ?? [] }))
           .catch(() => ({ id: wf.id, runs: [] }))
       )

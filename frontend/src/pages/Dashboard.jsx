@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { colors, typography } from '../theme';
 import apiClient from '../api/client';
 
@@ -197,8 +197,9 @@ export default function Dashboard() {
   const [runData, setRunData] = useState(null);
   const [searchData, setSearchData] = useState(null);
   const [userData, setUserData] = useState(null);
-  // null = loading, false = error, object = loaded
-  const [qualityData, setQualityData] = useState(null);
+  const [qualityData, setQualityData] = useState(null);  // null until first success
+  const [qualityError, setQualityError] = useState(false);
+  const qualityPollRef = useRef(null);
 
   useEffect(() => {
     // Documents
@@ -261,16 +262,25 @@ export default function Dashboard() {
       .then(({ data }) => setUserData({ total: data.total ?? 0 }))
       .catch(() => setUserData({ total: null }));
 
-    // Search quality — GET /api/v1/evaluation/quality
-    apiClient
-      .get('/api/v1/evaluation/quality')
-      .then(({ data }) => setQualityData(data))
-      .catch(() => setQualityData(false));
+    // Search quality — poll every 10 s since RAGAS scoring runs in the background
+    function fetchQuality() {
+      apiClient
+        .get('/api/v1/evaluation/quality')
+        .then(({ data }) => {
+          setQualityData(data);
+          setQualityError(false);
+        })
+        .catch(() => setQualityError(true));
+    }
+    fetchQuality();
+    qualityPollRef.current = setInterval(fetchQuality, 10000);
+
+    return () => clearInterval(qualityPollRef.current);
   }, []);
 
   // Loading states
   const statsLoading = docData === null || connectorData === null || runData === null || searchData === null;
-  const qualityLoading = qualityData === null;
+  const qualityLoading = qualityData === null && !qualityError;
 
   // Derived values
   const documents = docData?.total ?? 0;
@@ -336,10 +346,11 @@ export default function Dashboard() {
           title="Search quality"
           subtitle={
             qualityLoading ? '' :
-            qualityData === false ? 'Could not load quality data' :
+            qualityError && qualityData === null ? 'Quality scores unavailable' :
+            qualityData.total_evaluations === 0 ? 'Waiting for first evaluation' :
             `Based on ${qualityData.total_evaluations} RAGAS evaluations`
           }
-          subtitleColor={qualityData === false ? colors.error : colors.textMuted}
+          subtitleColor={colors.textMuted}
         >
           {qualityLoading ? (
             [0, 1, 2].map(i => (
@@ -355,9 +366,13 @@ export default function Dashboard() {
                 <Skeleton width="48px" height="22px" />
               </div>
             ))
-          ) : qualityData === false ? (
+          ) : qualityError && qualityData === null ? (
             <div style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
-              Restart the evaluation service to enable quality tracking.
+              Quality data is currently unavailable.
+            </div>
+          ) : qualityData.total_evaluations === 0 ? (
+            <div style={{ fontFamily: typography.fontUI, fontSize: typography.sizes.sm, color: colors.textMuted }}>
+              Scores will appear after the first search completes.
             </div>
           ) : (
             <>
@@ -413,7 +428,7 @@ export default function Dashboard() {
               />
               <UsageTile
                 value={chunks.toLocaleString('en-US')}
-                label="Docs indexed"
+                label="Chunks indexed"
                 sub=""
               />
               <UsageTile
