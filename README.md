@@ -6,13 +6,27 @@ Most RAG projects are demos. Stratum was built to find out what it actually take
 
 Stratum ingests content, indexes it for hybrid retrieval, generates answers validated against their sources, and continuously evaluates retrieval quality using RAGAS so regressions can be caught before they reach users.
 
-| Search — grounded answer with cited sources | Dashboard — live evaluation metrics |
-|---|---|
-| ![Search](docs/screenshots/search_page.png) | ![Dashboard](docs/screenshots/dashboard.png) |
+---
 
-| Workflows — checkpointed runs | Grafana — quality tracked over time |
+## Demo
+
+### Screenshots
+
+**Dashboard — live evaluation metrics and platform usage**
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+| Search — grounded answer with cited sources | Grafana — quality tracked over time |
 |---|---|
-| ![Workflows](docs/screenshots/workflow_page.png) | ![Grafana](docs/screenshots/grafana.png) |
+| ![Search](docs/screenshots/search_page.png) | ![Grafana](docs/screenshots/grafana.png) |
+
+| Workflows — checkpointed runs | Docs — indexed sources with chunk counts |
+|---|---|
+| ![Workflows](docs/screenshots/workflow_page.png) | ![Docs](docs/screenshots/docs_page.png) |
+
+**Settings — workspace, roles, and API keys**
+
+![Settings](docs/screenshots/settings_page.png)
 
 ---
 
